@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 def is_configured() -> bool:
-    model_path = Path(os.getenv("LIVING_AI_LITERTLM_MODEL_PATH", "models/litert/model.litertlm")).expanduser()
+    model_path = Path(os.getenv("LIVING_AI_LITERTLM_MODEL_PATH", "models/litert/gemma-4-E2B-it.litertlm")).expanduser()
     return model_path.is_file()
 
 
@@ -17,7 +17,7 @@ def generate(prompt: str, max_new_tokens: int = 256) -> str:
     This is conservative but can reload the model for each request; a persistent
     engine manager can be added later after Android memory/architecture testing.
     """
-    model_path = Path(os.getenv("LIVING_AI_LITERTLM_MODEL_PATH", "models/litert/model.litertlm")).expanduser()
+    model_path = Path(os.getenv("LIVING_AI_LITERTLM_MODEL_PATH", "models/litert/gemma-4-E2B-it.litertlm")).expanduser()
     if not model_path.is_file():
         raise FileNotFoundError(f"LiteRT-LM model not found: {model_path}")
 
