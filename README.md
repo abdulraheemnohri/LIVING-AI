@@ -1,8 +1,8 @@
 # LIVING-AI — Evolution Engine
 
-A local-first AI workbench for Android Debian/Linux terminal environments. It combines persistent SQLite memory, a character n-gram baseline, an original tiny byte-level Transformer trained from random initialization, mobile file and public webpage knowledge import, an optional OpenAI-compatible endpoint, and reversible settings evolution.
+A local-first AI workbench for Android Debian/Linux terminal environments. It combines persistent SQLite memory, a character n-gram baseline, an original tiny byte-level Transformer trained from random initialization, optional LiteRT-LM inference, mobile file and public webpage knowledge import, an optional OpenAI-compatible endpoint, and reversible settings evolution.
 
-> This is an evolving engineering project, not a claim of consciousness or frontier-level intelligence. The built-in n-gram model remains the lightweight default.
+> This is an evolving engineering project, not a claim of consciousness or frontier-level intelligence. The n-gram model is a lightweight fallback; LiteRT-LM requires a compatible pre-converted `.litertlm` model.
 
 ## Quick start (Debian/Linux on Android)
 
@@ -15,6 +15,38 @@ bash scripts/run.sh
 ```
 
 Open http://127.0.0.1:8000 in a browser. The server binds to localhost by default.
+
+## Hybrid inference: Character n-gram + LiteRT-LM
+
+LIVING AI supports two complementary local engines:
+
+- **Character n-gram:** very small resource footprint; learns character-level patterns from your corpus. It is not a modern reasoning LLM.
+- **LiteRT-LM:** runs a compatible pre-converted `.litertlm` language model locally. Model quality and RAM requirements depend on the selected model and device.
+- **Hybrid mode:** tries LiteRT-LM first, then falls back to saved local memory or the trained n-gram baseline if LiteRT-LM is unavailable or fails.
+
+Install the optional Python API in the active virtual environment:
+
+```bash
+python -m pip install -e '.[litert]'
+mkdir -p models/litert
+```
+
+Copy a legally obtained, compatible model file to `models/litert/model.litertlm`, or set `LIVING_AI_LITERTLM_MODEL_PATH` to its actual path. Start with CPU mode; GPU/NPU require supported runtime and hardware.
+
+Set these values in your `.env` file:
+
+```dotenv
+LIVING_AI_MODEL_BACKEND=hybrid
+LIVING_AI_LITERTLM_MODEL_PATH=models/litert/model.litertlm
+LIVING_AI_LITERTLM_BACKEND=cpu
+LIVING_AI_MODEL_PATH=models/char_ngram.json
+```
+
+Supported `LIVING_AI_MODEL_BACKEND` values are `hybrid`, `litert_lm`, `char_ngram`, and the existing `tiny_transformer` backend aliases. In strict `litert_lm` mode, a load/generation error is reported. In `hybrid` mode, the app records a fallback response and reason in the chat API result. The app does not download a model automatically.
+
+Official LiteRT-LM docs:
+- Python API: https://developers.google.com/edge/litert-lm/python
+- CLI and model running: https://developers.google.com/edge/litert-lm/cli/usage
 
 ## Train a small language model from scratch
 
@@ -43,6 +75,7 @@ Imported knowledge is searchable memory; it does not automatically train the mod
 - Litestar API and responsive dashboard
 - SQLite-backed persistent memory and lexical retrieval
 - Original character n-gram baseline and from-scratch byte-level Transformer trained from local UTF-8 text
+- Optional LiteRT-LM inference adapter with hybrid fallback
 - Mobile file import for TXT, Markdown and JSON plus explicit public webpage import
 - Optional OpenAI-compatible chat-completions provider (opt-in)
 - Allowlisted settings evolution with evaluation, snapshots, audit trail, and rollback
@@ -56,7 +89,7 @@ Place permitted plain-text files in `data/corpus/`, then use **Training Lab → 
 python -m living_ai.train --input data/corpus --output models/char_ngram.json
 ```
 
-This trains the small character n-gram baseline. The from-scratch Transformer has a separate training command; no pretrained model is included.
+This trains the small character n-gram baseline. The from-scratch Transformer has a separate training command; no pretrained model is included in the repository.
 
 ## Optional remote provider
 
@@ -75,70 +108,44 @@ python -m pip install -e '.[dev]'
 python -m pytest
 ```
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/ANDROID_DEBIAN.md](docs/ANDROID_DEBIAN.md).
+See `docs/ARCHITECTURE.md` and `docs/ANDROID_DEBIAN.md`.
 
 ## Current limitations
 
 - The tiny from-scratch model is educational, not assistant-grade; training may be slow and PyTorch wheel support depends on architecture.
+- LiteRT-LM requires a compatible external `.litertlm` model and installed runtime; model memory needs may exceed what a phone can spare.
 - No unattended crawler, PDF/YouTube ingestion, transformer fine-tuning, automatic online training, or autonomous source-code self-update is implemented; web import is user-initiated.
 - App source-code self-updates and arbitrary code execution are intentionally excluded.
 - Android CPU, RAM, storage, and thermal limits constrain inference and training.
 
-
 **Pretrained model removal:** The SmolLM3-3B-Base / Hugging Face Transformers backend has been removed. The default install does not include Transformers.
-
 
 ## Bounded autonomy engine
 
-The optional `living_ai.autonomous.AutonomyEngine` adds a persistent goal queue, bounded
-execution cycles, a registered-action policy, reversible-action auto-run, approval holding,
-saved notes, and an auditable run history. It uses only the Python standard library and does
-not launch shell commands or rewrite source code.
+The optional `living_ai.autonomous.AutonomyEngine` adds a persistent goal queue, bounded execution cycles, a registered-action policy, reversible-action auto-run, approval holding, saved notes, and an auditable run history. It uses only the Python standard library and does not launch shell commands or rewrite source code.
 
-See [docs/AUTONOMY.md](docs/AUTONOMY.md). Run the tests with `python -m pytest`.
-This is a controlled foundation: it does not start a background daemon automatically, and unknown
-or non-reversible actions are held instead of executed.
-
+See [docs/AUTONOMY.md](docs/AUTONOMY.md). Run the tests with `python -m pytest`. This is a controlled foundation: it does not start a background daemon automatically, and unknown or non-reversible actions are held instead of executed.
 
 ## Opt-in autonomy scheduler
 
-`living_ai.scheduler.AutonomyScheduler` adds explicit pause/resume, interval-based cycle gating,
-disable/enable controls, status reporting, and a per-run cycle budget. It never starts itself,
-creates a background thread, or bypasses the autonomy engine's action policy.
+`living_ai.scheduler.AutonomyScheduler` adds explicit pause/resume, interval-based cycle gating, disable/enable controls, status reporting, and a per-run cycle budget. It never starts itself, creates a background thread, or bypasses the autonomy engine's action policy.
 
 See [docs/SCHEDULER.md](docs/SCHEDULER.md). Tests are in `tests/test_scheduler.py`.
 
-
 ## Goal planner (Phase 3 foundation)
 
-`living_ai.planner.GoalPlanner` creates bounded, inspectable goal proposals and queues them for
-review without executing them. The baseline planner is deterministic and conservative; it does
-not call a model or access the network. See [docs/PLANNER.md](docs/PLANNER.md).
-
+`living_ai.planner.GoalPlanner` creates bounded, inspectable goal proposals and queues them for review without executing them. The baseline planner is deterministic and conservative; it does not call a model or access the network. See [docs/PLANNER.md](docs/PLANNER.md).
 
 ## Cognitive Core (Phase 4 foundation)
 
-Optional model-assisted goal decomposition is available through `living_ai.cognitive.CognitiveCore`.
-Remote planning is opt-in, validates model output, restricts suggestions to short text items, and
-falls back to the deterministic planner on invalid or unavailable responses. Plans remain review-only.
-See [docs/COGNITIVE_CORE.md](docs/COGNITIVE_CORE.md).
-
+Optional model-assisted goal decomposition is available through `living_ai.cognitive.CognitiveCore`. Remote planning is opt-in, validates model output, restricts suggestions to short text items, and falls back to the deterministic planner on invalid or unavailable responses. Plans remain review-only. See [docs/COGNITIVE_CORE.md](docs/COGNITIVE_CORE.md).
 
 ## Learning and evaluation memory (Phase 5 foundation)
 
-The optional `living_ai.learning.LearningStore` records reviewed outcomes and scores in local SQLite,
-retrieves similar prior evaluations using lightweight lexical overlap, and summarizes score trends.
-It does not independently verify success or modify model weights. See [docs/LEARNING.md](docs/LEARNING.md).
+The optional `living_ai.learning.LearningStore` records reviewed outcomes and scores in local SQLite, retrieves similar prior evaluations using lightweight lexical overlap, and summarizes score trends. It does not independently verify success or modify model weights. See [docs/LEARNING.md](docs/LEARNING.md).
 
 ## Review-first evolution coordinator (Phase 6)
 
-`living_ai.coordinator.EvolutionCoordinator` connects the planner, optional cognitive
-adapter, SQLite evaluation memory, and persistent autonomy queue. `prepare()` returns
-a plan alongside relevant past evaluations without queueing or executing it;
-`submit_for_review()` queues proposals only; and `record_evaluation()` stores feedback
-provided by a caller or human reviewer. Prior evaluations are shown as context and are
-not injected into model prompts. Remote planning remains opt-in, and the autonomy
-engine's registered-action policy remains the execution gate.
+The `living_ai.coordinator.EvolutionCoordinator` connects the planner, optional cognitive adapter, SQLite evaluation memory, and persistent autonomy queue. `prepare()` returns a plan alongside relevant past evaluations without queueing or executing it; `submit_for_review()` queues proposals only; and `record_evaluation()` stores feedback provided by a caller or human reviewer. Prior evaluations are shown as context and are not injected into model prompts. Remote planning remains opt-in, and the autonomy engine's registered-action policy remains the execution gate.
 
-See [docs/EVOLUTION_LOOP.md](docs/EVOLUTION_LOOP.md). Tests are in
-`tests/test_coordinator.py`.
+See [docs/EVOLUTION_LOOP.md](docs/EVOLUTION_LOOP.md). Tests are in `tests/test_coordinator.py`.
