@@ -29,9 +29,9 @@ A trained checkpoint consists of `config.json` and `weights.pt`. Treat checkpoin
 
 ## Dataset and quality
 
-- Only UTF-8 `.txt`, `.md`, and `.json` files are ingested, each at most 5 MB.
+- Only UTF-8 `.txt`, `.md`, and `.json` files are ingested, each at most 2 MB.
 - Use text you own, public-domain text, or text whose license permits training. JSON is validated and pretty-printed before training.
-- The trainer does not crawl the internet, fetch YouTube, parse PDFs, or fine-tune any pretrained model. Public webpages must be explicitly imported through the dashboard and then copied into `data/corpus/` if you want to train on them.
+- The trainer does not crawl the internet, fetch YouTube, parse PDFs, or fine-tune any pretrained model. Public webpages must be explicitly imported through the dashboard. Use the Import Data page's corpus-export action to include saved memory in `data/corpus/` for training.
 - A small randomly initialized model trained on a small corpus generally produces poor, repetitive, or incoherent text. It is an educational baseline, not a capable assistant.
 - CPU training can be slow and warm the phone. Monitor device temperature and stop if the device throttles or becomes uncomfortably hot. Keep steps and dimensions low.
 - Memory needs scale roughly with parameter count, batch size, sequence length, and optimizer state. There is no universal safe configuration for every Android device.
