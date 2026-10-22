@@ -28,3 +28,26 @@ if($("#fileimportform"))$("#fileimportform").onsubmit=async e=>{e.preventDefault
 if($("#urlimportform"))$("#urlimportform").onsubmit=async e=>{e.preventDefault();const out=$("#urlimportresult");out.textContent="Fetching public webpage…";try{const d=await api("/api/knowledge/ingest-url",{method:"POST",body:JSON.stringify({url:$("#knowledgeurl").value.trim()})});out.textContent=JSON.stringify({ingested:d.ingested,url:d.url,chunks:d.chunks,characters:d.characters},null,2);note("Webpage imported into local memory");status()}catch(err){out.textContent=err.message;note("Website import failed")}};
 
 if($("#exportcorpus"))$("#exportcorpus").onclick=async()=>{const out=$("#exportcorpusresult");out.textContent="Exporting saved memories…";try{const d=await api("/api/knowledge/export-corpus",{method:"POST",body:"{}"});out.textContent=JSON.stringify(d,null,2);note("Training corpus updated")}catch(e){out.textContent=e.message;note("Export failed")}};
+
+async function loadTrainingLab(){
+ try{
+  const d=await api("/api/training/datasets");
+  $("#datasetlist").innerHTML=d.items.map(x=>'<div class="item"><b>'+esc(x.filename)+'</b><p>'+esc(x.source)+' · '+x.characters+' chars · '+esc(x.status)+'</p><small>SHA-256: '+esc(x.sha256)+'</small></div>').join("")||"No staged datasets yet.";
+  const h=await api("/api/training/history");
+  const candidates=h.items.filter(x=>x.type==="teacher-prepare");
+  $("#teacherlist").innerHTML=candidates.map(x=>'<div class="item"><b>Teacher candidate '+esc(x.id)+'</b><p>'+esc(x.status)+' · '+x.candidates+' candidate(s) · '+x.characters+' chars</p>'+(x.status==="pending-human-review"?'<button data-teacher-approve="'+esc(x.id)+'">Approve staging</button>':'')+'</div>').join("")||"No teacher candidates yet.";
+  document.querySelectorAll("[data-teacher-approve]").forEach(b=>b.onclick=async()=>{if(!confirm("Approve this candidate for staging only? Review the file before training."))return;try{const result=await api("/api/training/teacher-approve/"+b.dataset.teacherApprove,{method:"POST",body:"{}"});note(result.note);loadTrainingLab()}catch(e){note(e.message)}});
+ }catch(e){note(e.message)}
+}
+if($("#datasetform"))$("#datasetform").onsubmit=async e=>{
+ e.preventDefault();const file=$("#datasetfile").files[0];if(!file)return;
+ const out=$("#datasetresult");out.textContent="Reading dataset…";
+ try{if(file.size>2_000_000)throw Error("File exceeds 2 MB");const content=await file.text();const result=await api("/api/training/datasets",{method:"POST",body:JSON.stringify({filename:file.name,content,source:$("#datasetsource").value||"manual-upload"})});out.textContent=JSON.stringify(result,null,2);note("Dataset staged; training has not started");loadTrainingLab()}catch(err){out.textContent=err.message;note("Dataset upload failed")}
+};
+if($("#teacherform"))$("#teacherform").onsubmit=async e=>{
+ e.preventDefault();const out=$("#teacherresult");out.textContent="Preparing candidates with configured local Model B…";
+ try{const result=await api("/api/training/teacher-prepare",{method:"POST",body:JSON.stringify({text:$("#teachertext").value,count:Number($("#teachercount").value)})});out.textContent=JSON.stringify(result,null,2);note("Candidates saved for human review");loadTrainingLab()}catch(err){out.textContent=err.message;note("Teacher preparation failed")}
+};
+if($("#refreshdatasets"))$("#refreshdatasets").onclick=loadTrainingLab;
+const oldGoTraining=go;
+go=function(v){oldGoTraining(v);if(v==="training")loadTrainingLab()};
