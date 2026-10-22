@@ -152,3 +152,8 @@ The **AI Planner** view exposes the review-first evolution coordinator. Prepare 
 ## Controlled Evolution Worker (Phase 10)
 
 The Worker Control dashboard provides persistent enable/disable and pause/resume state, bounded manual ticks, per-goal approvals, recent execution history, and deterministic recommendations from explicitly reviewed outcomes. There is no background worker or automatic execution loop. Newly submitted planner steps are held in `needs_approval` until individually approved. See [docs/CONTROLLED_WORKER.md](docs/CONTROLLED_WORKER.md).
+
+
+## Evaluation Lab (Phase 11)
+
+The Evaluation Lab provides an admin-token-protected dashboard for recording human-reviewed outcomes, searching local evaluation history, and inspecting summary metrics. Scores are explicit user feedback; they are not an automated truth signal. Saving evaluations does not execute goals or train model weights. See [docs/EVALUATION_LAB.md](docs/EVALUATION_LAB.md).
