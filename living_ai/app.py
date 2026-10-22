@@ -33,7 +33,7 @@ class TrainScratch(BaseModel):
 @get("/")
 async def index():return File(path=ROOT/"static"/"index.html",media_type="text/html")
 @get("/api/health")
-async def health():return {"ok":True,"name":"LIVING AI","version":"0.1.0"}
+async def health():return {"ok":True,"name":"LIVING AI","version":"0.3.0"}
 @get("/api/status")
 async def status():
     with connect() as c: n=c.execute("SELECT COUNT(*) n FROM memories").fetchone()["n"];p=c.execute("SELECT COUNT(*) n FROM proposals").fetchone()["n"]
@@ -95,12 +95,10 @@ async def settings():return {"settings":get_settings(),"auto_promote":os.getenv(
 def train_scratch(data:TrainScratch,request:Request):
     auth(request)
     if data.width % data.heads: raise HTTPException(status_code=400,detail="width must be divisible by heads")
-    input_path=Path(data.input_dir).expanduser().resolve()
-    output_path=Path(data.output_dir).expanduser().resolve()
     allowed_input=(data_dir()/"corpus").resolve()
+    output_path=Path(data.output_dir).expanduser().resolve()
     allowed_output=(ROOT/"models"/"tiny_transformer").resolve()
-    if not input_path.is_relative_to(allowed_input):
-        raise HTTPException(status_code=400,detail="Training input must be inside the configured data/corpus directory")
+    input_path=allowed_input
     if output_path != allowed_output:
         raise HTTPException(status_code=400,detail="Training output is fixed to models/tiny_transformer")
     try:
