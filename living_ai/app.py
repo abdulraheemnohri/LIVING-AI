@@ -103,20 +103,20 @@ async def train_scratch(data:TrainScratch,request:Request):
 async def model_status():
     backend=os.getenv("LIVING_AI_MODEL_BACKEND","char_ngram").strip().lower()
     model_id=os.getenv("LIVING_AI_HF_MODEL_ID","HuggingFaceTB/SmolLM3-3B-Base").strip()
+    tiny_dir=Path(os.getenv("LIVING_AI_TINY_MODEL_DIR","models/tiny_transformer"))
     try:
-        deps={"torch":importlib.util.find_spec("torch") is not None,
-              "transformers":importlib.util.find_spec("transformers") is not None}
+        deps={"torch":importlib.util.find_spec("torch") is not None,"transformers":importlib.util.find_spec("transformers") is not None}
     except (ImportError, ValueError):
         deps={"torch":False,"transformers":False}
-    return {
-        "backend":backend,
-        "model_id":model_id if backend in {"transformers","smollm3","huggingface"} else None,
-        "device":os.getenv("LIVING_AI_HF_DEVICE","cpu"),
-        "dtype":os.getenv("LIVING_AI_HF_DTYPE","auto"),
-        "local_only":os.getenv("LIVING_AI_HF_LOCAL_ONLY","false").lower()=="true",
-        "dependencies":deps,
-        "ready":all(deps.values()) if backend in {"transformers","smollm3","huggingface"} else True,
-        "remote_provider_enabled":os.getenv("LIVING_AI_ALLOW_REMOTE_PROVIDER","false").lower()=="true",
-    }
+    hf=backend in {"transformers","smollm3","huggingface"}
+    tiny=backend in {"tiny_transformer","from_scratch","native_transformer"}
+    if tiny:
+        ready=deps["torch"] and (tiny_dir/"config.json").is_file() and (tiny_dir/"weights.pt").is_file()
+    elif hf:
+        ready=all(deps.values())
+    else:
+        ready=True
+    return {"backend":backend,"model_id":model_id if hf else ("living-ai-from-scratch" if tiny else None),"device":os.getenv("LIVING_AI_TINY_DEVICE","cpu") if tiny else os.getenv("LIVING_AI_HF_DEVICE","cpu"),"dtype":os.getenv("LIVING_AI_HF_DTYPE","auto") if hf else None,"local_only":os.getenv("LIVING_AI_HF_LOCAL_ONLY","false").lower()=="true" if hf else True,"dependencies":deps,"tiny_checkpoint_exists":(tiny_dir/"weights.pt").is_file(),"ready":ready,"remote_provider_enabled":os.getenv("LIVING_AI_ALLOW_REMOTE_PROVIDER","false").lower()=="true"}
+
 init_db()
 app=Litestar(route_handlers=[index,health,status,chat,memories,add,remove,ingest,train,proposals,propose,eval_route,promote_route,rollback_route,audit,settings,train_scratch,model_status],static_files_config=[StaticFilesConfig(path="/static",directories=[str(ROOT/"static")])],debug=False)
