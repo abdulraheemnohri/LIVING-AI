@@ -114,3 +114,11 @@ See [docs/SCHEDULER.md](docs/SCHEDULER.md). Tests are in `tests/test_scheduler.p
 `living_ai.planner.GoalPlanner` creates bounded, inspectable goal proposals and queues them for
 review without executing them. The baseline planner is deterministic and conservative; it does
 not call a model or access the network. See [docs/PLANNER.md](docs/PLANNER.md).
+
+
+## Cognitive Core (Phase 4 foundation)
+
+Optional model-assisted goal decomposition is available through `living_ai.cognitive.CognitiveCore`.
+Remote planning is opt-in, validates model output, restricts suggestions to short text items, and
+falls back to the deterministic planner on invalid or unavailable responses. Plans remain review-only.
+See [docs/COGNITIVE_CORE.md](docs/COGNITIVE_CORE.md).
