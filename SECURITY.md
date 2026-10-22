@@ -25,3 +25,7 @@ authentication and review the deployment boundary.
 `GET /api/model/status` reports the configured backend, selected model ID, device,
 and whether the optional `torch` and `transformers` packages are importable. It
 does not load model weights or guarantee that enough RAM is available to generate.
+
+## From-scratch training boundary
+
+The dashboard's native-model trainer reads from the configured data directory's corpus folder and writes only to the repository's models/tiny_transformer folder. Dashboard training inputs have conservative step, batch, sequence, width, and layer limits; CLI training remains more configurable. Training can still consume substantial CPU and memory, so use a small configuration on mobile hardware. The checkpoint is a local state dictionary, not an artifact to download from untrusted sources.
