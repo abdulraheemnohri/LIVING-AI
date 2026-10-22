@@ -35,34 +35,34 @@ class TrainScratch(BaseModel):
     layers:int=Field(default=2,ge=1,le=4)
     seed:int=42
 @get("/")
-async def index():return File(path=ROOT/"static"/"index.html",media_type="text/html")
+async def index() -> File:return File(path=ROOT/"static"/"index.html",media_type="text/html")
 @get("/api/health")
-async def health():return {"ok":True,"name":"LIVING AI","version":"0.4.0"}
+async def health() -> dict[str, Any]:return {"ok":True,"name":"LIVING AI","version":"0.4.0"}
 @get("/api/status")
-async def status():
+async def status() -> dict[str, Any]:
     with connect() as c: n=c.execute("SELECT COUNT(*) n FROM memories").fetchone()["n"];p=c.execute("SELECT COUNT(*) n FROM proposals").fetchone()["n"]
     return {"status":"running","memories":n,"proposals":p,"original_model_trained":(ROOT/"models"/"char_ngram.json").exists(),"tiny_transformer_trained":(ROOT/"models"/"tiny_transformer"/"weights.pt").exists(),"settings":get_settings(),"data_dir":str(data_dir())}
 @post("/api/chat")
-async def chat(data:Chat):
+async def chat(data:Chat) -> dict[str, Any]:
     try:return respond(data.message)
     except ValueError as e:raise HTTPException(status_code=400,detail=str(e))
 @get("/api/memories")
-async def memories(q:str="",limit:int=20):return {"items":search_memories(q,limit)}
+async def memories(q:str="",limit:int=20) -> dict[str, Any]:return {"items":search_memories(q,limit)}
 @post("/api/memories")
-async def add(data:Memory,request:Request):
+async def add(data:Memory,request:Request) -> dict[str, Any]:
     auth(request)
     try:return add_memory(data.content,data.source)
     except ValueError as e:raise HTTPException(status_code=400,detail=str(e))
 @delete("/api/memories/{memory_id:int}")
-async def remove(memory_id:int,request:Request):
+async def remove(memory_id:int,request:Request) -> dict[str, Any]:
     auth(request)
     if not delete_memory(memory_id):raise HTTPException(status_code=404,detail="Memory not found")
     return {"deleted":True,"id":memory_id}
 @post("/api/knowledge/ingest")
-async def ingest(data:Memory,request:Request):
+async def ingest(data:Memory,request:Request) -> dict[str, Any]:
     auth(request);return {"ingested":True,"memory":add_memory(data.content,data.source)}
 @post("/api/knowledge/ingest-file")
-async def ingest_file(data:FileIngest,request:Request):
+async def ingest_file(data:FileIngest,request:Request) -> dict[str, Any]:
     auth(request)
     try:
         text=parse_document(data.filename,data.content)
@@ -82,7 +82,7 @@ def ingest_url(data:URLIngest,request:Request) -> dict[str, Any]:
         return {"ingested":True,"url":url,"chunks":len(saved),"characters":len(text),"items":saved}
     except ValueError as e: raise HTTPException(status_code=400,detail=str(e))
 @post("/api/knowledge/export-corpus")
-async def export_corpus(request:Request):
+async def export_corpus(request:Request) -> dict[str, Any]:
     auth(request)
     target=data_dir()/"corpus"/"imported_memory_corpus.txt"
     target.parent.mkdir(parents=True,exist_ok=True)
@@ -101,38 +101,38 @@ async def export_corpus(request:Request):
     temp.replace(target)
     return {"exported":True,"path":str(target),"documents":len(parts),"bytes":total,"note":"Review licensing and quality before training."}
 @post("/api/training/train")
-async def train(data:Train,request:Request):
+async def train(data:Train,request:Request) -> dict[str, Any]:
     auth(request)
     try:return train_directory(data.input_dir)
     except ValueError as e:raise HTTPException(status_code=400,detail=str(e))
 @get("/api/evolution/proposals")
-async def proposals():return {"items":list_proposals()}
+async def proposals() -> dict[str, Any]:return {"items":list_proposals()}
 @post("/api/evolution/proposals")
-async def propose(data:Proposal,request:Request):
+async def propose(data:Proposal,request:Request) -> dict[str, Any]:
     auth(request)
     try:return create_proposal(data.title,data.changes)
     except ValueError as e:raise HTTPException(status_code=400,detail=str(e))
 @post("/api/evolution/proposals/{proposal_id:int}/evaluate")
-async def eval_route(proposal_id:int,request:Request):
+async def eval_route(proposal_id:int,request:Request) -> dict[str, Any]:
     auth(request)
     try:return evaluate(proposal_id)
     except ValueError as e:raise HTTPException(status_code=400,detail=str(e))
 @post("/api/evolution/proposals/{proposal_id:int}/promote")
-async def promote_route(proposal_id:int,request:Request):
+async def promote_route(proposal_id:int,request:Request) -> dict[str, Any]:
     auth(request)
     try:return promote(proposal_id)
     except ValueError as e:raise HTTPException(status_code=400,detail=str(e))
 @post("/api/evolution/rollback")
-async def rollback_route(request:Request):
+async def rollback_route(request:Request) -> dict[str, Any]:
     auth(request)
     try:return rollback()
     except ValueError as e:raise HTTPException(status_code=400,detail=str(e))
 @get("/api/audit")
-async def audit(limit:int=50):
+async def audit(limit:int=50) -> dict[str, Any]:
     with connect() as c:rows=c.execute("SELECT * FROM audit ORDER BY id DESC LIMIT ?",(max(1,min(limit,200)),)).fetchall()
     return {"items":[{"id":r["id"],"action":r["action"],"detail":json.loads(r["detail_json"]),"created_at":r["created_at"]} for r in rows]}
 @get("/api/settings")
-async def settings():return {"settings":get_settings(),"auto_promote":os.getenv("LIVING_AI_AUTO_PROMOTE","false").lower()=="true"}
+async def settings() -> dict[str, Any]:return {"settings":get_settings(),"auto_promote":os.getenv("LIVING_AI_AUTO_PROMOTE","false").lower()=="true"}
 
 @post("/api/training/train-from-scratch")
 def train_scratch(data:TrainScratch,request:Request) -> dict[str, Any]:
@@ -148,7 +148,7 @@ def train_scratch(data:TrainScratch,request:Request) -> dict[str, Any]:
         return train_small_transformer(input_dir=str(input_path),output_dir=str(output_path),steps=data.steps,batch_size=data.batch_size,learning_rate=data.learning_rate,seed=data.seed,config_overrides={"block_size":data.block_size,"d_model":data.width,"n_heads":data.heads,"n_layers":data.layers})
     except (ValueError,RuntimeError) as e: raise HTTPException(status_code=400,detail=str(e))
 @get("/api/model/status")
-async def model_status():
+async def model_status() -> dict[str, Any]:
     backend=os.getenv("LIVING_AI_MODEL_BACKEND","char_ngram").strip().lower()
     if backend not in {"char_ngram","tiny_transformer","from_scratch","native_transformer"}: backend="char_ngram"
     tiny_dir=Path(os.getenv("LIVING_AI_TINY_MODEL_DIR","models/tiny_transformer"))
