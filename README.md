@@ -16,13 +16,15 @@ bash scripts/run.sh
 
 Open http://127.0.0.1:8000 in a browser. The server binds to localhost by default.
 
-## Hybrid inference: Character n-gram + LiteRT-LM
+## Hybrid inference: Model A trains, Model B only runs inference
 
-LIVING AI supports two complementary local engines:
+The two-model policy is explicit:
 
-- **Character n-gram:** very small resource footprint; learns character-level patterns from your corpus. It is not a modern reasoning LLM.
-- **LiteRT-LM:** runs a compatible pre-converted `.litertlm` language model locally. Model quality and RAM requirements depend on the selected model and device.
-- **Hybrid mode:** tries LiteRT-LM first, then falls back to saved local memory or the trained n-gram baseline if LiteRT-LM is unavailable or fails.
+- **Model A — Character n-gram:** the only model in this pair that is trained locally. It learns character-level patterns from your corpus and serves as the lightweight fallback; it is not a modern reasoning LLM.
+- **Model B — LiteRT-LM:** inference only. LIVING AI loads a compatible, already-converted `.litertlm` model and generates responses. This repository does not train, fine-tune, or update Model B's weights.
+- **Hybrid mode:** tries Model B (LiteRT-LM) first, then falls back to saved local memory or Model A if Model B is unavailable or fails.
+
+Training data and checkpoints for Model A are kept separate from Model B's pre-converted model file. Importing knowledge into SQLite memory does not train either model automatically.
 
 Install the optional Python API in the active virtual environment:
 
@@ -75,13 +77,13 @@ Imported knowledge is searchable memory; it does not automatically train the mod
 - Litestar API and responsive dashboard
 - SQLite-backed persistent memory and lexical retrieval
 - Original character n-gram baseline and from-scratch byte-level Transformer trained from local UTF-8 text
-- Optional LiteRT-LM inference adapter with hybrid fallback
+- Model A character n-gram training; Model B LiteRT-LM inference only with hybrid fallback
 - Mobile file import for TXT, Markdown and JSON plus explicit public webpage import
 - Optional OpenAI-compatible chat-completions provider (opt-in)
 - Allowlisted settings evolution with evaluation, snapshots, audit trail, and rollback
 - Local installation scripts and unit tests
 
-## Train the original baseline
+## Train Model A (the only trained model in this pair)
 
 Place permitted plain-text files in `data/corpus/`, then use **Training Lab → Train model now**, or run:
 
@@ -89,7 +91,7 @@ Place permitted plain-text files in `data/corpus/`, then use **Training Lab → 
 python -m living_ai.train --input data/corpus --output models/char_ngram.json
 ```
 
-This trains the small character n-gram baseline. The from-scratch Transformer has a separate training command; no pretrained model is included in the repository.
+This command trains Model A, the small character n-gram baseline. Model B (LiteRT-LM) is inference-only and has no training command or fine-tuning path in this hybrid design.
 
 ## Optional remote provider
 
