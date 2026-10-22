@@ -71,7 +71,7 @@ async def ingest_file(data:FileIngest,request:Request) -> dict[str, Any]:
         saved=[add_memory(chunk,f"file:{Path(data.filename).name}#part-{index}") for index,chunk in enumerate(chunks,1)]
         return {"ingested":True,"filename":Path(data.filename).name,"chunks":len(saved),"characters":len(text),"items":saved}
     except ValueError as e: raise HTTPException(status_code=400,detail=str(e))
-@post("/api/knowledge/ingest-url")
+@post("/api/knowledge/ingest-url", sync_to_thread=True)
 def ingest_url(data:URLIngest,request:Request) -> dict[str, Any]:
     auth(request)
     try:
@@ -134,7 +134,7 @@ async def audit(limit:int=50) -> dict[str, Any]:
 @get("/api/settings")
 async def settings() -> dict[str, Any]:return {"settings":get_settings(),"auto_promote":os.getenv("LIVING_AI_AUTO_PROMOTE","false").lower()=="true"}
 
-@post("/api/training/train-from-scratch")
+@post("/api/training/train-from-scratch", sync_to_thread=True)
 def train_scratch(data:TrainScratch,request:Request) -> dict[str, Any]:
     auth(request)
     if data.width % data.heads: raise HTTPException(status_code=400,detail="width must be divisible by heads")
