@@ -1,4 +1,4 @@
-import os,json
+import os,json,importlib.util
 from pathlib import Path
 from litestar import Litestar,get,post,delete,Request
 from litestar.exceptions import HTTPException
@@ -78,5 +78,25 @@ async def audit(limit:int=50):
     return {"items":[{"id":r["id"],"action":r["action"],"detail":json.loads(r["detail_json"]),"created_at":r["created_at"]} for r in rows]}
 @get("/api/settings")
 async def settings():return {"settings":get_settings(),"auto_promote":os.getenv("LIVING_AI_AUTO_PROMOTE","false").lower()=="true"}
+
+@get("/api/model/status")
+async def model_status():
+    backend=os.getenv("LIVING_AI_MODEL_BACKEND","char_ngram").strip().lower()
+    model_id=os.getenv("LIVING_AI_HF_MODEL_ID","HuggingFaceTB/SmolLM3-3B-Base").strip()
+    try:
+        deps={"torch":importlib.util.find_spec("torch") is not None,
+              "transformers":importlib.util.find_spec("transformers") is not None}
+    except (ImportError, ValueError):
+        deps={"torch":False,"transformers":False}
+    return {
+        "backend":backend,
+        "model_id":model_id if backend in {"transformers","smollm3","huggingface"} else None,
+        "device":os.getenv("LIVING_AI_HF_DEVICE","cpu"),
+        "dtype":os.getenv("LIVING_AI_HF_DTYPE","auto"),
+        "local_only":os.getenv("LIVING_AI_HF_LOCAL_ONLY","false").lower()=="true",
+        "dependencies":deps,
+        "ready":all(deps.values()) if backend in {"transformers","smollm3","huggingface"} else True,
+        "remote_provider_enabled":os.getenv("LIVING_AI_ALLOW_REMOTE_PROVIDER","false").lower()=="true",
+    }
 init_db()
-app=Litestar(route_handlers=[index,health,status,chat,memories,add,remove,ingest,train,proposals,propose,eval_route,promote_route,rollback_route,audit,settings],static_files_config=[StaticFilesConfig(path="/static",directories=[str(ROOT/"static")])],debug=False)
+app=Litestar(route_handlers=[index,health,status,chat,memories,add,remove,ingest,train,proposals,propose,eval_route,promote_route,rollback_route,audit,settings,model_status],static_files_config=[StaticFilesConfig(path="/static",directories=[str(ROOT/"static")])],debug=False)
