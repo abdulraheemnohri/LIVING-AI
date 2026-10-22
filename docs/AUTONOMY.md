@@ -26,3 +26,9 @@ print(agent.list_runs())
 The built-in `save_note` is the reference action. This module does not start a background daemon
 or silently alter the dashboard/API. A scheduler and UI integration should be added as separately
 reviewable steps, with pause/resume controls and resource budgets.
+
+
+## Scheduling
+
+For explicit interval and pause/resume controls, see [SCHEDULER.md](SCHEDULER.md). The scheduler is
+opt-in and does not start background work automatically.
