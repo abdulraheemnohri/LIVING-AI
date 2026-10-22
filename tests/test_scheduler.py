@@ -20,13 +20,14 @@ def test_scheduler_starts_paused_and_does_not_run(tmp_path):
 def test_scheduler_waits_for_interval():
     now = [10.0]
     engine = FakeEngine()
-    scheduler = AutonomyScheduler(engine, interval_seconds=5, clock=lambda: now[0])
+    scheduler = AutonomyScheduler(engine, interval_seconds=5, max_cycles_per_run=2, clock=lambda: now[0])
     scheduler.resume()
     assert scheduler.tick()["status"] == "ran"
     assert scheduler.tick()["status"] == "waiting"
     now[0] += 5
-    assert scheduler.tick()["status"] == "cycle_limit_reached"
-    assert engine.calls == 1
+    assert scheduler.tick()["status"] == "ran"
+    assert engine.calls == 2
+    assert scheduler.paused
 
 
 def test_force_bypasses_only_interval():
