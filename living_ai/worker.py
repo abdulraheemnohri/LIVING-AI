@@ -5,6 +5,7 @@ import json
 import sqlite3
 import time
 from pathlib import Path
+from contextlib import contextmanager
 from typing import Any
 
 from .autonomous import AutonomyEngine
@@ -43,10 +44,15 @@ class ControlledWorker:
                 (int(max_cycles_per_run), time.time()),
             )
 
+    @contextmanager
     def _db(self):
         db = sqlite3.connect(self.db_path, timeout=10)
         db.row_factory = sqlite3.Row
-        return db
+        try:
+            yield db
+            db.commit()
+        finally:
+            db.close()
 
     def _state(self) -> dict[str, Any]:
         with self._db() as db:
