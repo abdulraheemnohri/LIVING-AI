@@ -11,7 +11,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Callable
 
-from .planner import Goal, GoalPlanner, Plan, PlanStep
+from .planner import GoalPlanner, Plan, PlanStep
 from .providers import remote_chat
 
 
