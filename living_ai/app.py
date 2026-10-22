@@ -92,13 +92,20 @@ async def audit(limit:int=50):
 async def settings():return {"settings":get_settings(),"auto_promote":os.getenv("LIVING_AI_AUTO_PROMOTE","false").lower()=="true"}
 
 @post("/api/training/train-from-scratch")
-async def train_scratch(data:TrainScratch,request:Request):
+def train_scratch(data:TrainScratch,request:Request):
     auth(request)
     if data.width % data.heads: raise HTTPException(status_code=400,detail="width must be divisible by heads")
+    input_path=Path(data.input_dir).expanduser().resolve()
+    output_path=Path(data.output_dir).expanduser().resolve()
+    allowed_input=(data_dir()/"corpus").resolve()
+    allowed_output=(ROOT/"models"/"tiny_transformer").resolve()
+    if not input_path.is_relative_to(allowed_input):
+        raise HTTPException(status_code=400,detail="Training input must be inside the configured data/corpus directory")
+    if output_path != allowed_output:
+        raise HTTPException(status_code=400,detail="Training output is fixed to models/tiny_transformer")
     try:
-        return train_small_transformer(input_dir=data.input_dir,output_dir=data.output_dir,steps=data.steps,batch_size=data.batch_size,learning_rate=data.learning_rate,seed=data.seed,config_overrides={"block_size":data.block_size,"d_model":data.width,"n_heads":data.heads,"n_layers":data.layers})
+        return train_small_transformer(input_dir=str(input_path),output_dir=str(output_path),steps=data.steps,batch_size=data.batch_size,learning_rate=data.learning_rate,seed=data.seed,config_overrides={"block_size":data.block_size,"d_model":data.width,"n_heads":data.heads,"n_layers":data.layers})
     except (ValueError,RuntimeError) as e: raise HTTPException(status_code=400,detail=str(e))
-
 @get("/api/model/status")
 async def model_status():
     backend=os.getenv("LIVING_AI_MODEL_BACKEND","char_ngram").strip().lower()
