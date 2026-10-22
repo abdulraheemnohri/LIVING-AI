@@ -130,6 +130,8 @@ def planner_proposals(request: Request, limit: int = 30) -> dict[str, Any]:
 def planner_submit(data: SubmitRequest, request: Request) -> dict[str, Any]:
     _require_admin(request)
     with _connect() as db:
+        # Serialize submitters so concurrent duplicate requests cannot queue twice.
+        db.execute("BEGIN IMMEDIATE")
         row = db.execute("SELECT * FROM prepared_plans WHERE plan_id=?", (data.plan_id,)).fetchone()
         if row is None:
             raise HTTPException(status_code=404, detail="Prepared plan not found")
