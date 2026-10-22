@@ -75,8 +75,19 @@ def assess_gate(*, window: int = DEFAULT_WINDOW, min_score: float = DEFAULT_MIN_
         except (TypeError, json.JSONDecodeError):
             results = []
             reasons.append(f"Run {run['run_id']} has invalid result data.")
-        failures = [item for item in results if not item.get("passed")]
+        if not isinstance(results, list):
+            reasons.append(f"Run {run['run_id']} result data must be a list.")
+            results = []
+        if len(results) != int(run["total"]):
+            reasons.append(f"Run {run['run_id']} test count does not match its saved result rows.")
+        expected_score = round(int(run["passed"]) / int(run["total"]), 4) if int(run["total"]) > 0 else 0.0
+        if abs(expected_score - float(run["score"])) > 0.0001:
+            reasons.append(f"Run {run['run_id']} score does not match its saved pass count.")
+        failures = [item for item in results if not isinstance(item, dict) or not item.get("passed")]
         for failed in failures:
+            if not isinstance(failed, dict):
+                reasons.append(f"Run {run['run_id']} contains malformed case data.")
+                continue
             case_id = str(failed.get("case_id", "unknown"))
             checks = ", ".join(str(c) for c in failed.get("errors", [])) or "inspect case details"
             recommendation = f"Fix regression case '{case_id}': {checks}."
