@@ -24,25 +24,36 @@ Open http://127.0.0.1:8000 in a browser. The server binds to localhost by defaul
 
 **Implementation status:** the current repository has LiteRT-LM inference integration and existing local training code, but does not yet contain a Model B training/fine-tuning-and-conversion pipeline. The current Training Lab trains the character n-gram baseline, and the optional tiny Transformer trainer is a separate existing feature; these have not yet been replaced with Model B training. Imported SQLite memory is not automatically training data.
 
-Install the optional Python API in the active virtual environment:
+## Model B: Gemma 4 E2B Instruct (LiteRT-LM)
+
+Use the published `litert-community/gemma-4-E2B-it-litert-lm` model as Model B. Its model file is `gemma-4-E2B-it.litertlm`, already packaged for LiteRT-LM inference; the repository's adapter expects it at `models/litert/gemma-4-E2B-it.litertlm`.
+
+Install the official runtime package and prepare the model directory:
 
 ```bash
 python -m pip install -e '.[litert]'
 mkdir -p models/litert
 ```
 
-Copy a legally obtained, compatible model file to `models/litert/model.litertlm`, or set `LIVING_AI_LITERTLM_MODEL_PATH` to its actual path. Start with CPU mode; GPU/NPU require supported runtime and hardware.
+Download the model file from the [Hugging Face model repository](https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm) into that directory, or try the official CLI directly:
+
+```bash
+pip install -U litert-lm
+litert-lm run --from-huggingface-repo=litert-community/gemma-4-E2B-it-litert-lm gemma-4-E2B-it.litertlm --prompt="Hello"
+```
+
+The CLI command tests Model B independently; the LIVING AI app uses the local path configured in `.env`. Set `LIVING_AI_LITERTLM_MODEL_PATH` if you save it elsewhere. The model file is about 2.6 GB, and the model card reports roughly 1.7 GB CPU memory on a tested Android flagship; a 6 GB phone may still face memory pressure depending on Android/Linux overhead. Start with CPU mode. GPU requires compatible runtime and hardware.
 
 Set these values in your `.env` file:
 
 ```dotenv
 LIVING_AI_MODEL_BACKEND=hybrid
-LIVING_AI_LITERTLM_MODEL_PATH=models/litert/model.litertlm
+LIVING_AI_LITERTLM_MODEL_PATH=models/litert/gemma-4-E2B-it.litertlm
 LIVING_AI_LITERTLM_BACKEND=cpu
 LIVING_AI_MODEL_PATH=models/char_ngram.json
 ```
 
-Supported `LIVING_AI_MODEL_BACKEND` values are `hybrid`, `litert_lm`, `char_ngram`, and the existing `tiny_transformer` backend aliases. In strict `litert_lm` mode, a load/generation error is reported. In `hybrid` mode, the app records a fallback response and reason in the chat API result. The app does not download a model automatically.
+Supported `LIVING_AI_MODEL_BACKEND` values are `hybrid`, `litert_lm`, `char_ngram`, and the existing `tiny_transformer` backend aliases. In strict `litert_lm` mode, a load/generation error is reported. In `hybrid` mode, the app records a fallback response and reason in the chat API result. The app does not download a model automatically; download the Gemma 4 E2B LiteRT-LM file separately as described above.
 
 Official LiteRT-LM docs:
 - Python API: https://developers.google.com/edge/litert-lm/python
@@ -113,7 +124,7 @@ See `docs/ARCHITECTURE.md` and `docs/ANDROID_DEBIAN.md`.
 ## Current limitations
 
 - The tiny from-scratch model is educational, not assistant-grade; training may be slow and PyTorch wheel support depends on architecture.
-- LiteRT-LM requires a compatible external `.litertlm` model and installed runtime; model memory needs may exceed what a phone can spare.
+- LiteRT-LM uses the external Gemma 4 E2B Instruct `.litertlm` model and installed runtime; the model is about 2.6 GB on disk and memory needs may exceed what a phone can spare.
 - No unattended crawler, PDF/YouTube ingestion, transformer fine-tuning, automatic online training, or autonomous source-code self-update is implemented; web import is user-initiated.
 - App source-code self-updates and arbitrary code execution are intentionally excluded.
 - Android CPU, RAM, storage, and thermal limits constrain inference and training.
