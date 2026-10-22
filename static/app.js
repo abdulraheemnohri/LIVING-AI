@@ -6,3 +6,5 @@ $("#refreshmodel").onclick=loadModelStatus;
 const originalGo=go;
 go=function(v){originalGo(v);if(v==="settings")loadModelStatus()};
 status();
+
+$("#scratchform").onsubmit=async e=>{e.preventDefault();const out=$("#scratchresult");out.textContent="Training started; keep this page open. CPU training can take time.";try{const d=await api("/api/training/train-from-scratch",{method:"POST",body:JSON.stringify({input_dir:"data/corpus",output_dir:"models/tiny_transformer",steps:Number($("#scratchsteps").value),batch_size:Number($("#scratchbatch").value),width:Number($("#scratchwidth").value),heads:4,layers:2,block_size:Number($("#scratchblock").value),seed:42})});out.textContent=JSON.stringify(d,null,2);note("From-scratch training finished");status()}catch(err){out.textContent=err.message;note("Training failed")}};
