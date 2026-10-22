@@ -8,3 +8,20 @@
 - No arbitrary command execution, package installation, or source-code self-rewriting is provided.
 - Keep .env, SQLite databases, backups, and model artifacts private.
 - Imported text is data only and is never executed.
+
+
+## Dashboard admin token
+
+If `LIVING_AI_ADMIN_TOKEN` is configured, write operations require an
+`Authorization: Bearer <token>` header. The dashboard Settings page lets you enter
+the token; it is stored in the current browser tab's `sessionStorage` and cleared
+when that tab's session ends. Do not paste the token into chat, source files, or
+screenshots. If the token is empty in `.env`, write endpoints are not protected by
+this token mechanism, so keep the service bound to localhost unless you configure
+authentication and review the deployment boundary.
+
+## Model diagnostics
+
+`GET /api/model/status` reports the configured backend, selected model ID, device,
+and whether the optional `torch` and `transformers` packages are importable. It
+does not load model weights or guarantee that enough RAM is available to generate.
