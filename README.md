@@ -122,3 +122,10 @@ Optional model-assisted goal decomposition is available through `living_ai.cogni
 Remote planning is opt-in, validates model output, restricts suggestions to short text items, and
 falls back to the deterministic planner on invalid or unavailable responses. Plans remain review-only.
 See [docs/COGNITIVE_CORE.md](docs/COGNITIVE_CORE.md).
+
+
+## Learning and evaluation memory (Phase 5 foundation)
+
+The optional `living_ai.learning.LearningStore` records reviewed outcomes and scores in local SQLite,
+retrieves similar prior evaluations using lightweight lexical overlap, and summarizes score trends.
+It does not independently verify success or modify model weights. See [docs/LEARNING.md](docs/LEARNING.md).
