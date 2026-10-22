@@ -152,3 +152,10 @@ The **AI Planner** view exposes the review-first evolution coordinator. Prepare 
 ## Controlled Evolution Worker (Phase 10)
 
 The Worker Control dashboard provides persistent enable/disable and pause/resume state, bounded manual ticks, per-goal approvals, recent execution history, and deterministic recommendations from explicitly reviewed outcomes. There is no background worker or automatic execution loop. Newly submitted planner steps are held in `needs_approval` until individually approved. See [docs/CONTROLLED_WORKER.md](docs/CONTROLLED_WORKER.md).
+
+
+## Offline Evaluation Lab (Phase 11)
+
+The **Evaluation Lab** runs eight fixed regression cases against the deterministic planner and persists run history in SQLite. It checks bounded step counts, preserved goals, explicit review requirements, action allowlisting, payload limits, and Unicode input handling. Open the Evaluation Lab dashboard page or use `POST /api/evaluation/run`; inspect history with `GET /api/evaluation/runs`. Both endpoints require `LIVING_AI_ADMIN_TOKEN`.
+
+This is a structural regression suite, not a semantic-quality benchmark. It does not invoke remote models, train weights, approve plans, or execute actions. See [docs/EVALUATION_LAB.md](docs/EVALUATION_LAB.md).
