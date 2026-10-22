@@ -16,15 +16,13 @@ bash scripts/run.sh
 
 Open http://127.0.0.1:8000 in a browser. The server binds to localhost by default.
 
-## Hybrid inference: Model A trains, Model B only runs inference
+## Hybrid architecture: Model B is the trainable model; Model A is the fallback
 
-The two-model policy is explicit:
+- **Model A — Character n-gram:** fallback/inference baseline only in the intended two-model workflow. It is not the target of the Model B training pipeline.
+- **Model B — LiteRT-LM-compatible language model:** Model B is the model intended to be trained or fine-tuned. Important: LiteRT-LM is an inference runtime, not a training framework. Train/fine-tune the source model with a compatible external training stack, evaluate it, then convert/export it to a supported `.litertlm` artifact for local inference.
+- **Hybrid mode:** tries the converted Model B through LiteRT-LM first, then falls back to saved local memory or Model A if Model B is unavailable or fails.
 
-- **Model A — Character n-gram:** the only model in this pair that is trained locally. It learns character-level patterns from your corpus and serves as the lightweight fallback; it is not a modern reasoning LLM.
-- **Model B — LiteRT-LM:** inference only. LIVING AI loads a compatible, already-converted `.litertlm` model and generates responses. This repository does not train, fine-tune, or update Model B's weights.
-- **Hybrid mode:** tries Model B (LiteRT-LM) first, then falls back to saved local memory or Model A if Model B is unavailable or fails.
-
-Training data and checkpoints for Model A are kept separate from Model B's pre-converted model file. Importing knowledge into SQLite memory does not train either model automatically.
+**Implementation status:** the current repository has LiteRT-LM inference integration and existing local training code, but does not yet contain a Model B training/fine-tuning-and-conversion pipeline. The current Training Lab trains the character n-gram baseline, and the optional tiny Transformer trainer is a separate existing feature; these have not yet been replaced with Model B training. Imported SQLite memory is not automatically training data.
 
 Install the optional Python API in the active virtual environment:
 
@@ -77,21 +75,21 @@ Imported knowledge is searchable memory; it does not automatically train the mod
 - Litestar API and responsive dashboard
 - SQLite-backed persistent memory and lexical retrieval
 - Original character n-gram baseline and from-scratch byte-level Transformer trained from local UTF-8 text
-- Model A character n-gram training; Model B LiteRT-LM inference only with hybrid fallback
+- Model A character n-gram fallback; Model B LiteRT-LM inference adapter (Model B training pipeline still pending)
 - Mobile file import for TXT, Markdown and JSON plus explicit public webpage import
 - Optional OpenAI-compatible chat-completions provider (opt-in)
 - Allowlisted settings evolution with evaluation, snapshots, audit trail, and rollback
 - Local installation scripts and unit tests
 
-## Train Model A (the only trained model in this pair)
+## Current training commands (legacy; not yet the Model B pipeline)
 
-Place permitted plain-text files in `data/corpus/`, then use **Training Lab → Train model now**, or run:
+The existing command below trains the character n-gram baseline. It is not a Model B trainer. Do not treat it as the requested Model B training workflow:
 
 ```bash
 python -m living_ai.train --input data/corpus --output models/char_ngram.json
 ```
 
-This command trains Model A, the small character n-gram baseline. Model B (LiteRT-LM) is inference-only and has no training command or fine-tuning path in this hybrid design.
+This command only trains the existing character n-gram baseline. The Model B training/fine-tuning, evaluation, and conversion pipeline remains to be implemented.
 
 ## Optional remote provider
 
