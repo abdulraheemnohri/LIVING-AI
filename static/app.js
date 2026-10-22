@@ -51,3 +51,16 @@ if($("#teacherform"))$("#teacherform").onsubmit=async e=>{
 if($("#refreshdatasets"))$("#refreshdatasets").onclick=loadTrainingLab;
 const oldGoTraining=go;
 go=function(v){oldGoTraining(v);if(v==="training")loadTrainingLab()};
+
+const trainingLabBaseLoad=loadTrainingLab;
+loadTrainingLab=async function(){
+ await trainingLabBaseLoad();
+ try{
+  const d=await api("/api/training/datasets");
+  $("#datasetlist").innerHTML=d.items.map(x=>'<div class="item"><b>'+esc(x.filename)+'</b><p>'+esc(x.source)+' · '+x.characters+' chars · '+esc(x.status)+'</p><small>SHA-256: '+esc(x.sha256)+'</small><p><button data-stage-dataset="'+esc(x.id)+'">Stage into training corpus</button></p></div>').join("")||"No staged datasets yet.";
+  const h=await api("/api/training/history");
+  $("#teacherlist").innerHTML=h.items.filter(x=>x.type==="teacher-prepare").map(x=>'<div class="item"><b>Teacher candidate '+esc(x.id)+'</b><p>'+esc(x.status)+' · '+x.candidates+' candidates</p>'+(x.status==="pending-human-review"?'<button data-teacher-approve="'+esc(x.id)+'">Approve staging</button>':(x.status==="human-approved"?'<button data-stage-teacher="'+esc(x.id)+'">Stage into training corpus</button>':""))+'</div>').join("")||"No teacher candidates yet.";
+  document.querySelectorAll("[data-stage-dataset]").forEach(b=>b.onclick=async()=>{if(!confirm("Copy dataset into data/corpus? Training will not start automatically."))return;try{let z=await api("/api/training/stage/dataset/"+b.dataset.stageDataset,{method:"POST",body:"{}"});note(z.note);loadTrainingLab()}catch(e){note(e.message)}});
+  document.querySelectorAll("[data-stage-teacher]").forEach(b=>b.onclick=async()=>{if(!confirm("Copy approved teacher text into data/corpus? Review it first."))return;try{let z=await api("/api/training/stage/teacher/"+b.dataset.stageTeacher,{method:"POST",body:"{}"});note(z.note);loadTrainingLab()}catch(e){note(e.message)}});
+ }catch(e){note(e.message)}
+};
