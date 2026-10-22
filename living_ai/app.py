@@ -10,6 +10,7 @@ from .memory import add_memory,search_memories,delete_memory
 from .engine import respond
 from .training import train_directory
 from .neural_training import train_small_transformer
+from .knowledge import parse_document, split_text, fetch_public_page
 from .evolution import create_proposal,list_proposals,evaluate,promote,rollback
 ROOT=Path(__file__).resolve().parent.parent
 def auth(req):
@@ -17,6 +18,8 @@ def auth(req):
     if token and req.headers.get("authorization","")!=f"Bearer {token}":raise HTTPException(status_code=401,detail="Bearer token required")
 class Chat(BaseModel): message:str=Field(min_length=1,max_length=20000)
 class Memory(BaseModel): content:str=Field(min_length=1,max_length=100000);source:str="manual"
+class FileIngest(BaseModel): filename:str=Field(min_length=1,max_length=255);content:str=Field(min_length=1,max_length=2_500_000)
+class URLIngest(BaseModel): url:str=Field(min_length=8,max_length=2048)
 class Proposal(BaseModel): title:str;changes:dict
 class Train(BaseModel): input_dir:str="data/corpus"
 class TrainScratch(BaseModel):
@@ -57,6 +60,26 @@ async def remove(memory_id:int,request:Request):
 @post("/api/knowledge/ingest")
 async def ingest(data:Memory,request:Request):
     auth(request);return {"ingested":True,"memory":add_memory(data.content,data.source)}
+@post("/api/knowledge/ingest-file")
+async def ingest_file(data:FileIngest,request:Request):
+    auth(request)
+    try:
+        text=parse_document(data.filename,data.content)
+        chunks=split_text(text)
+        if len(chunks)>100: raise ValueError("File creates too many chunks; split the file or use a smaller file")
+        saved=[add_memory(chunk,f"file:{Path(data.filename).name}#part-{index}") for index,chunk in enumerate(chunks,1)]
+        return {"ingested":True,"filename":Path(data.filename).name,"chunks":len(saved),"characters":len(text),"items":saved}
+    except ValueError as e: raise HTTPException(status_code=400,detail=str(e))
+@post("/api/knowledge/ingest-url")
+def ingest_url(data:URLIngest,request:Request):
+    auth(request)
+    try:
+        text,url=fetch_public_page(data.url)
+        chunks=split_text(text)
+        if len(chunks)>100: raise ValueError("Page creates too many chunks; use a more focused URL")
+        saved=[add_memory(chunk,f"url:{url}#part-{index}") for index,chunk in enumerate(chunks,1)]
+        return {"ingested":True,"url":url,"chunks":len(saved),"characters":len(text),"items":saved}
+    except ValueError as e: raise HTTPException(status_code=400,detail=str(e))
 @post("/api/training/train")
 async def train(data:Train,request:Request):
     auth(request)
@@ -107,21 +130,21 @@ def train_scratch(data:TrainScratch,request:Request):
 @get("/api/model/status")
 async def model_status():
     backend=os.getenv("LIVING_AI_MODEL_BACKEND","char_ngram").strip().lower()
-    model_id=os.getenv("LIVING_AI_HF_MODEL_ID","HuggingFaceTB/SmolLM3-3B-Base").strip()
     tiny_dir=Path(os.getenv("LIVING_AI_TINY_MODEL_DIR","models/tiny_transformer"))
     try:
-        deps={"torch":importlib.util.find_spec("torch") is not None,"transformers":importlib.util.find_spec("transformers") is not None}
-    except (ImportError, ValueError):
-        deps={"torch":False,"transformers":False}
-    hf=backend in {"transformers","smollm3","huggingface"}
+        import torch
+        torch_available=True
+        torch_version=torch.__version__
+    except ImportError:
+        torch_available=False
+        torch_version=None
     tiny=backend in {"tiny_transformer","from_scratch","native_transformer"}
-    if tiny:
-        ready=deps["torch"] and (tiny_dir/"config.json").is_file() and (tiny_dir/"weights.pt").is_file()
-    elif hf:
-        ready=all(deps.values())
-    else:
-        ready=True
-    return {"backend":backend,"model_id":model_id if hf else ("living-ai-from-scratch" if tiny else None),"device":os.getenv("LIVING_AI_TINY_DEVICE","cpu") if tiny else os.getenv("LIVING_AI_HF_DEVICE","cpu"),"dtype":os.getenv("LIVING_AI_HF_DTYPE","auto") if hf else None,"local_only":os.getenv("LIVING_AI_HF_LOCAL_ONLY","false").lower()=="true" if hf else True,"dependencies":deps,"tiny_checkpoint_exists":(tiny_dir/"weights.pt").is_file(),"ready":ready,"remote_provider_enabled":os.getenv("LIVING_AI_ALLOW_REMOTE_PROVIDER","false").lower()=="true"}
+    ready=(torch_available and (tiny_dir/"config.json").is_file() and (tiny_dir/"weights.pt").is_file()) if tiny else True
+    return {"backend":backend,"model_id":"living-ai-from-scratch" if tiny else None,
+            "device":os.getenv("LIVING_AI_TINY_DEVICE","cpu") if tiny else "cpu",
+            "dependencies":{"torch":torch_available,"torch_version":torch_version},
+            "tiny_checkpoint_exists":(tiny_dir/"weights.pt").is_file(),"ready":ready,
+            "remote_provider_enabled":os.getenv("LIVING_AI_ALLOW_REMOTE_PROVIDER","false").lower()=="true"}
 
 init_db()
-app=Litestar(route_handlers=[index,health,status,chat,memories,add,remove,ingest,train,proposals,propose,eval_route,promote_route,rollback_route,audit,settings,train_scratch,model_status],static_files_config=[StaticFilesConfig(path="/static",directories=[str(ROOT/"static")])],debug=False)
+app=Litestar(route_handlers=[index,health,status,chat,memories,add,remove,ingest,ingest_file,ingest_url,train,proposals,propose,eval_route,promote_route,rollback_route,audit,settings,train_scratch,model_status],static_files_config=[StaticFilesConfig(path="/static",directories=[str(ROOT/"static")])],debug=False)
