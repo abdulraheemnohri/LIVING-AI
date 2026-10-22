@@ -1,5 +1,6 @@
 import os,json
 from pathlib import Path
+from typing import Any
 from litestar import Litestar,get,post,delete,Request
 from litestar.exceptions import HTTPException
 from litestar.response import File
@@ -71,7 +72,7 @@ async def ingest_file(data:FileIngest,request:Request):
         return {"ingested":True,"filename":Path(data.filename).name,"chunks":len(saved),"characters":len(text),"items":saved}
     except ValueError as e: raise HTTPException(status_code=400,detail=str(e))
 @post("/api/knowledge/ingest-url")
-def ingest_url(data:URLIngest,request:Request):
+def ingest_url(data:URLIngest,request:Request) -> dict[str, Any]:
     auth(request)
     try:
         text,url=fetch_public_page(data.url)
@@ -134,7 +135,7 @@ async def audit(limit:int=50):
 async def settings():return {"settings":get_settings(),"auto_promote":os.getenv("LIVING_AI_AUTO_PROMOTE","false").lower()=="true"}
 
 @post("/api/training/train-from-scratch")
-def train_scratch(data:TrainScratch,request:Request):
+def train_scratch(data:TrainScratch,request:Request) -> dict[str, Any]:
     auth(request)
     if data.width % data.heads: raise HTTPException(status_code=400,detail="width must be divisible by heads")
     allowed_input=(data_dir()/"corpus").resolve()
