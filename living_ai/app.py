@@ -155,7 +155,7 @@ async def model_status() -> dict[str, Any]:
     allowed={"char_ngram","tiny_transformer","from_scratch","native_transformer","litert_lm","hybrid"}
     if backend not in allowed: backend="char_ngram"
     tiny_dir=Path(os.getenv("LIVING_AI_TINY_MODEL_DIR","models/tiny_transformer"))
-    litert_path=Path(os.getenv("LIVING_AI_LITERTLM_MODEL_PATH","models/litert/model.litertlm")).expanduser()
+    litert_path=Path(os.getenv("LIVING_AI_LITERTLM_MODEL_PATH","models/litert/gemma-4-E2B-it.litertlm")).expanduser()
     try:
         import torch
         torch_available=True
