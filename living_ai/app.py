@@ -16,8 +16,12 @@ from .knowledge import parse_document, split_text, fetch_public_page
 from .evolution import create_proposal,list_proposals,evaluate,promote,rollback
 ROOT=Path(__file__).resolve().parent.parent
 def auth(req):
+    """Fail closed: state-changing admin routes are unavailable until a token is configured."""
     token=os.getenv("LIVING_AI_ADMIN_TOKEN","").strip()
-    if token and req.headers.get("authorization","")!=f"Bearer {token}":raise HTTPException(status_code=401,detail="Bearer token required")
+    if not token:
+        raise HTTPException(status_code=503,detail="Admin routes are locked: configure LIVING_AI_ADMIN_TOKEN and restart")
+    if req.headers.get("authorization","")!=f"Bearer {token}":
+        raise HTTPException(status_code=401,detail="Valid admin bearer token required")
 class Chat(BaseModel): message:str=Field(min_length=1,max_length=20000)
 class Memory(BaseModel): content:str=Field(min_length=1,max_length=100000);source:str="manual"
 class FileIngest(BaseModel): filename:str=Field(min_length=1,max_length=255);content:str=Field(min_length=1,max_length=2_500_000)
