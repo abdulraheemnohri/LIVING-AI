@@ -16,6 +16,7 @@ from .evolution import create_proposal,list_proposals,evaluate,promote,rollback
 from .planner_api import planner_prepare,planner_proposals,planner_submit,planner_record_evaluation,planner_learning_summary
 from .evaluation_api import evaluation_run,evaluation_runs
 from .promotion_gate import evaluation_gate_check,evaluation_gate_history
+from .dataset_lab import dataset_add_example,dataset_list_examples,dataset_review_example,dataset_export
 from .worker_api import worker_status,worker_resume,worker_pause,worker_enable,worker_disable,worker_configure,worker_tick,worker_approve_goal,worker_recommendations
 ROOT=Path(__file__).resolve().parent.parent
 def auth(req):
@@ -174,4 +175,4 @@ async def model_status() -> dict[str, Any]:
             "remote_provider_enabled":os.getenv("LIVING_AI_ALLOW_REMOTE_PROVIDER","false").lower()=="true"}
 
 init_db()
-app=Litestar(route_handlers=[index,health,status,chat,memories,add,remove,ingest,ingest_file,ingest_url,export_corpus,train,proposals,propose,eval_route,promote_route,rollback_route,audit,settings,train_scratch,model_status,planner_prepare,planner_proposals,planner_submit,planner_record_evaluation,planner_learning_summary,worker_status,worker_resume,worker_pause,worker_enable,worker_disable,worker_configure,worker_tick,worker_approve_goal,worker_recommendations,evaluation_run,evaluation_runs,evaluation_gate_check,evaluation_gate_history],static_files_config=[StaticFilesConfig(path="/static",directories=[str(ROOT/"static")])],debug=False)
+app=Litestar(route_handlers=[index,health,status,chat,memories,add,remove,ingest,ingest_file,ingest_url,export_corpus,train,proposals,propose,eval_route,promote_route,rollback_route,audit,settings,train_scratch,model_status,planner_prepare,planner_proposals,planner_submit,planner_record_evaluation,planner_learning_summary,worker_status,worker_resume,worker_pause,worker_enable,worker_disable,worker_configure,worker_tick,worker_approve_goal,worker_recommendations,evaluation_run,evaluation_runs,evaluation_gate_check,evaluation_gate_history,dataset_add_example,dataset_list_examples,dataset_review_example,dataset_export],static_files_config=[StaticFilesConfig(path="/static",directories=[str(ROOT/"static")])],debug=False)
