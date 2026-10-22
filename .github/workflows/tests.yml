@@ -13,7 +13,12 @@ jobs:
         with:
           python-version: "3.11"
       - run: python -m pip install --upgrade pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
       - run: python -m pip install -e ".[dev]"
+      - run: node --check static/app.js
+      - run: node --check static/planner.js
       - run: python -m compileall -q living_ai
       - run: python -c "from living_ai.app import app; print(f'Litestar startup OK: {len(app.routes)} routes registered')"
       - run: python -m pytest -q
