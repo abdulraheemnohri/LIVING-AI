@@ -1,6 +1,6 @@
 # LIVING-AI — Evolution Engine
 
-A local-first AI workbench for Android Debian/Linux terminal environments. It combines persistent SQLite memory, a character n-gram baseline, an original tiny byte-level Transformer trained from random initialization, optional Hugging Face inference using **HuggingFaceTB/SmolLM3-3B-Base**, an optional OpenAI-compatible endpoint, and reversible settings evolution.
+A local-first AI workbench for Android Debian/Linux terminal environments. It combines persistent SQLite memory, a character n-gram baseline, an original tiny byte-level Transformer trained from random initialization, mobile file and public webpage knowledge import, an optional OpenAI-compatible endpoint, and reversible settings evolution.
 
 > This is an evolving engineering project, not a claim of consciousness or frontier-level intelligence. SmolLM3-3B-Base is a pretrained base checkpoint and may not follow instructions as reliably as an instruction-tuned model. The built-in n-gram model remains the lightweight default.
 
@@ -32,27 +32,18 @@ To serve the trained checkpoint, set LIVING_AI_MODEL_BACKEND=tiny_transformer an
 
 See docs/TRAIN_FROM_SCRATCH.md for details.
 
-## Enable SmolLM3-3B-Base locally
+## Import data from your phone
 
-Install the optional dependencies:
+Open **Import Data** in the dashboard. Select local `.txt`, `.md`, or `.json` files (up to 2 MB each), or paste a public webpage URL. JSON is validated; imported text is chunked into SQLite memory. The online importer limits pages to 1 MB, checks for public IP addresses, blocks redirects and accepts text content only. Sites that require login or JavaScript are not supported.
 
-```bash
-source .venv/bin/activate
-python -m pip install -e '.[hf]'
-export LIVING_AI_MODEL_BACKEND=transformers
-export LIVING_AI_HF_MODEL_ID=HuggingFaceTB/SmolLM3-3B-Base
-export LIVING_AI_HF_DEVICE=cpu
-bash scripts/run.sh
-```
-
-The first chat request downloads the model if it is not cached. The 3B checkpoint is large; FP32 parameters alone can occupy around 12 GB, before runtime overhead. Many Android devices cannot load it in available RAM, and compatible PyTorch wheels may not exist for every Android Debian architecture. If install or loading fails, use the lightweight default or a compatible inference endpoint. See [docs/SMOLLM3.md](docs/SMOLLM3.md).
+Imported knowledge is searchable memory; it does not automatically train the model. To train, place lawful UTF-8 TXT/Markdown/JSON files in `data/corpus/`.
 
 ## Core capabilities
 
 - Litestar API and responsive dashboard
 - SQLite-backed persistent memory and lexical retrieval
 - Original character n-gram baseline and from-scratch byte-level Transformer trained from local UTF-8 text
-- Optional local SmolLM3-3B-Base inference via Transformers
+- Mobile file import for TXT, Markdown and JSON plus explicit public webpage import
 - Optional OpenAI-compatible chat-completions provider (opt-in)
 - Allowlisted settings evolution with evaluation, snapshots, audit trail, and rollback
 - Local installation scripts and unit tests
@@ -84,13 +75,16 @@ python -m pip install -e '.[dev]'
 python -m pytest
 ```
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/ANDROID_DEBIAN.md](docs/ANDROID_DEBIAN.md), and [docs/SMOLLM3.md](docs/SMOLLM3.md).
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/ANDROID_DEBIAN.md](docs/ANDROID_DEBIAN.md).
 
 ## Current limitations
 
 - SmolLM3-3B-Base is a base model, not instruction-tuned, and can produce weak or incoherent continuations.
 - The tiny from-scratch model is educational, not assistant-grade; training may be slow and PyTorch wheel support depends on architecture.
 - SmolLM3 model loading may exceed Android device RAM; PyTorch wheel support depends on architecture.
-- No unattended web crawler, PDF/YouTube ingestion, transformer fine-tuning, or autonomous source-code self-update is implemented; knowledge ingestion is explicit.
+- No unattended crawler, PDF/YouTube ingestion, transformer fine-tuning, automatic online training, or autonomous source-code self-update is implemented; web import is user-initiated.
 - App source-code self-updates and arbitrary code execution are intentionally excluded.
 - Android CPU, RAM, storage, and thermal limits constrain inference and training.
+
+
+**Pretrained model removal:** The SmolLM3-3B-Base / Hugging Face Transformers backend has been removed. The default install does not include Transformers.
