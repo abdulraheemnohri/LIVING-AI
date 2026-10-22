@@ -70,11 +70,14 @@ class GoalPlanner:
         """Queue proposed steps without running them; engine policy still controls execution."""
         ids = []
         for step in plan.steps:
-            ids.append(self.engine.add_goal(
+            goal_id = self.engine.add_goal(
                 title=f"[{plan.plan_id[:8]}] {step.title}",
                 action=step.action,
                 payload=step.payload,
-            ))
+            )
+            # A submitted proposal is not approval. Hold it before any worker cycle.
+            self.engine.require_approval(goal_id)
+            ids.append(goal_id)
         return ids
 
     @staticmethod
