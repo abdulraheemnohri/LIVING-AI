@@ -26,3 +26,5 @@ async function importLocalFiles(){
 }
 if($("#fileimportform"))$("#fileimportform").onsubmit=async e=>{e.preventDefault();await importLocalFiles()};
 if($("#urlimportform"))$("#urlimportform").onsubmit=async e=>{e.preventDefault();const out=$("#urlimportresult");out.textContent="Fetching public webpage…";try{const d=await api("/api/knowledge/ingest-url",{method:"POST",body:JSON.stringify({url:$("#knowledgeurl").value.trim()})});out.textContent=JSON.stringify({ingested:d.ingested,url:d.url,chunks:d.chunks,characters:d.characters},null,2);note("Webpage imported into local memory");status()}catch(err){out.textContent=err.message;note("Website import failed")}};
+
+if($("#exportcorpus"))$("#exportcorpus").onclick=async()=>{const out=$("#exportcorpusresult");out.textContent="Exporting saved memories…";try{const d=await api("/api/knowledge/export-corpus",{method:"POST",body:"{}"});out.textContent=JSON.stringify(d,null,2);note("Training corpus updated")}catch(e){out.textContent=e.message;note("Export failed")}};
