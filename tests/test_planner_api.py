@@ -11,7 +11,7 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("LIVING_AI_ADMIN_TOKEN", "test-admin-token")
     monkeypatch.setenv("LIVING_AI_ALLOW_REMOTE_PROVIDER", "false")
     planner_api._engine = None
-    planner_api._coordinator = None
+    planner_api._coordinator_instance = None
     with TestClient(app) as test_client:
         yield test_client
     planner_api._engine = None
