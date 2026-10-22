@@ -1,6 +1,6 @@
 # Android Debian/Linux and Pixel-class devices
 
-LIVING AI targets a Debian userspace terminal on Android, including the Google Android Linux terminal environment. These steps are not Termux-specific. Python 3.11+ is required by `pyproject.toml`.
+LIVING AI targets a Debian userspace terminal on Android, including the Google Android Linux terminal environment. These steps are not Termux-specific. Python 3.11+ is required by project metadata.
 
 ## Setup
 
@@ -12,56 +12,47 @@ source .venv/bin/activate
 bash scripts/run.sh
 ```
 
-Open `http://127.0.0.1:8000` in a browser reachable from the Linux environment. If localhost is isolated, use the terminal environment's supported port forwarding. The server binds to localhost by default.
+Open `http://127.0.0.1:8000` in a browser reachable from the Linux environment.
 
-## Model B: Gemma 4 E2B Instruct
+## Model B: Gemma 4 E2B teacher model
 
-The intended Model B artifact is `litert-community/gemma-4-E2B-it-litert-lm`, file `gemma-4-E2B-it.litertlm`. The file is approximately 2.6 GB on disk. See the [official model card](https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm) for current device-specific performance and requirements.
+Model B is `litert-community/gemma-4-E2B-it-litert-lm`, expected artifact `gemma-4-E2B-it.litertlm`, approximately 2.6 GB. [Official model card](https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm).
+
+Install the optional runtime:
 
 ```bash
 source .venv/bin/activate
 python -m pip install -e '.[litert]'
 mkdir -p models/litert
-# Download gemma-4-E2B-it.litertlm from the official Hugging Face repository
-# into models/litert/, or configure LIVING_AI_LITERTLM_MODEL_PATH.
 ```
 
-For an independent runtime smoke test, the official CLI documents:
+Download the model artifact separately into `models/litert/`, or configure `LIVING_AI_LITERTLM_MODEL_PATH` to the actual file. The app does not auto-download a multi-gigabyte model.
 
-```bash
-python -m pip install -U litert-lm
-litert-lm run --from-huggingface-repo=litert-community/gemma-4-E2B-it-litert-lm gemma-4-E2B-it.litertlm --prompt="Hello"
-```
+Model B is an inference-only teacher/coach in this design. It may help prepare data and candidate examples for Model A, but it does not train itself. A 6 GB phone may face memory pressure; start with CPU mode and measure real usage.
 
-This CLI test is not the same as verifying the LIVING AI adapter. The app requires a readable local model file at the configured path. Use CPU mode first. The model card reports about 1.7 GB CPU memory on one tested Android flagship; this is not a guarantee for every device or Debian environment. A 6 GB phone may experience memory pressure when the OS, browser, Python process and model are all active.
+## Model A training sources
 
-## Environment
+The intended training UI should support several selectable sources:
 
-Set the following in a local `.env` file (copy `.env.example` first):
+1. Upload a dataset/file manually.
+2. Select files from a configured corpus directory.
+3. Select and export reviewed local memories.
+4. Select reviewed content from explicit public-web imports.
+5. Ask Model B to normalize, classify, label, deduplicate, explain or propose synthetic training examples.
+6. Convert evaluation failures into candidate examples for user review.
 
-```dotenv
-LIVING_AI_MODEL_BACKEND=hybrid
-LIVING_AI_MODEL_PATH=models/char_ngram.json
-LIVING_AI_LITERTLM_MODEL_PATH=models/litert/gemma-4-E2B-it.litertlm
-LIVING_AI_LITERTLM_BACKEND=cpu
-```
+Training should start only after preview and explicit confirmation. Keep source/provenance metadata, show duplicate and malformed records, label Model B-generated content, and let the user exclude examples.
 
-## Mobile workflow
+**Current limitation:** the existing n-gram trainer can train Model A from supported corpus files, but the complete multi-source teacher-assisted training UI/pipeline is not yet implemented. Importing memory or a webpage does not itself train a model. The optional tiny Transformer trainer is separate and does not fine-tune Gemma.
 
-- Dashboard → Import Data: import TXT, Markdown or JSON files, or explicitly fetch a public text webpage.
-- Dashboard → Memory: search and delete saved memory chunks.
-- Dashboard → Training: existing controls train the n-gram baseline and optional from-scratch tiny Transformer. They do **not** fine-tune Gemma.
-- Model status: check the configured backend and whether the local LiteRT-LM artifact is present. A file-presence check does not prove runtime compatibility or available RAM.
-
-## Resource advice
+## Resource guidance
 
 - Start tiny Transformer experiments at width 32–64, 2 layers, block size 32–64, batch size 1–2 and 100–300 steps.
-- Neural training is CPU/RAM-intensive and may heat/throttle a phone. Stop if the device overheats.
-- PyTorch wheels may not be available for every Android Debian architecture/Python version. The SQLite memory and n-gram features do not require PyTorch.
-- Leave several GB of free storage for the Gemma artifact, cache and exported data.
+- Training can consume CPU/RAM and heat the phone; stop if the device overheats.
+- PyTorch support varies by Android Debian architecture/Python version.
+- Keep several GB free for Model B, cache and datasets.
+- Use training limits, versioned checkpoints, evaluation and rollback before replacing Model A's active checkpoint.
 
-## Online and offline behavior
+## Online/offline
 
-TXT/Markdown/JSON import and SQLite retrieval can work locally. Public webpage import needs internet and is user-initiated. It does not continuously crawl sites or automatically train model weights. Review licensing and quality before using imported data as a training corpus.
-
-The SmolLM3/Hugging Face Transformers backend has been removed. The Gemma LiteRT-LM artifact is a separate inference backend. The requested Model B fine-tuning, evaluation and conversion pipeline is still pending.
+Local file import and SQLite memory can work offline. Model B inference works offline only after the model artifact and runtime are installed. Public webpage import and model downloads require internet. Remote inference is a separate opt-in feature and sends prompts to the configured provider.
