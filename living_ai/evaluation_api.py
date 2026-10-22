@@ -13,7 +13,6 @@ from litestar import Request, get, post
 from litestar.exceptions import HTTPException
 from .db import data_dir
 from .planner_api import get_coordinator
-from .planner import GoalPlanner
 
 CASES = [
     ("simple", "Write a short project note."),
