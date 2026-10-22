@@ -1,0 +1,82 @@
+import os,json
+from pathlib import Path
+from litestar import Litestar,get,post,delete,Request
+from litestar.exceptions import HTTPException
+from litestar.response import File
+from litestar.static_files import StaticFilesConfig
+from pydantic import BaseModel,Field
+from .db import init_db,connect,get_settings,data_dir
+from .memory import add_memory,search_memories,delete_memory
+from .engine import respond
+from .training import train_directory
+from .evolution import create_proposal,list_proposals,evaluate,promote,rollback
+ROOT=Path(__file__).resolve().parent.parent
+def auth(req):
+    token=os.getenv("LIVING_AI_ADMIN_TOKEN","").strip()
+    if token and req.headers.get("authorization","")!=f"Bearer {token}":raise HTTPException(status_code=401,detail="Bearer token required")
+class Chat(BaseModel): message:str=Field(min_length=1,max_length=20000)
+class Memory(BaseModel): content:str=Field(min_length=1,max_length=100000);source:str="manual"
+class Proposal(BaseModel): title:str;changes:dict
+class Train(BaseModel): input_dir:str="data/corpus"
+@get("/")
+async def index():return File(path=ROOT/"static"/"index.html",media_type="text/html")
+@get("/api/health")
+async def health():return {"ok":True,"name":"LIVING AI","version":"0.1.0"}
+@get("/api/status")
+async def status():
+    with connect() as c: n=c.execute("SELECT COUNT(*) n FROM memories").fetchone()["n"];p=c.execute("SELECT COUNT(*) n FROM proposals").fetchone()["n"]
+    return {"status":"running","memories":n,"proposals":p,"original_model_trained":(ROOT/"models"/"char_ngram.json").exists(),"settings":get_settings(),"data_dir":str(data_dir())}
+@post("/api/chat")
+async def chat(data:Chat):
+    try:return respond(data.message)
+    except ValueError as e:raise HTTPException(status_code=400,detail=str(e))
+@get("/api/memories")
+async def memories(q:str="",limit:int=20):return {"items":search_memories(q,limit)}
+@post("/api/memories")
+async def add(data:Memory,request:Request):
+    auth(request)
+    try:return add_memory(data.content,data.source)
+    except ValueError as e:raise HTTPException(status_code=400,detail=str(e))
+@delete("/api/memories/{memory_id:int}")
+async def remove(memory_id:int,request:Request):
+    auth(request)
+    if not delete_memory(memory_id):raise HTTPException(status_code=404,detail="Memory not found")
+    return {"deleted":True,"id":memory_id}
+@post("/api/knowledge/ingest")
+async def ingest(data:Memory,request:Request):
+    auth(request);return {"ingested":True,"memory":add_memory(data.content,data.source)}
+@post("/api/training/train")
+async def train(data:Train,request:Request):
+    auth(request)
+    try:return train_directory(data.input_dir)
+    except ValueError as e:raise HTTPException(status_code=400,detail=str(e))
+@get("/api/evolution/proposals")
+async def proposals():return {"items":list_proposals()}
+@post("/api/evolution/proposals")
+async def propose(data:Proposal,request:Request):
+    auth(request)
+    try:return create_proposal(data.title,data.changes)
+    except ValueError as e:raise HTTPException(status_code=400,detail=str(e))
+@post("/api/evolution/proposals/{proposal_id:int}/evaluate")
+async def eval_route(proposal_id:int,request:Request):
+    auth(request)
+    try:return evaluate(proposal_id)
+    except ValueError as e:raise HTTPException(status_code=400,detail=str(e))
+@post("/api/evolution/proposals/{proposal_id:int}/promote")
+async def promote_route(proposal_id:int,request:Request):
+    auth(request)
+    try:return promote(proposal_id)
+    except ValueError as e:raise HTTPException(status_code=400,detail=str(e))
+@post("/api/evolution/rollback")
+async def rollback_route(request:Request):
+    auth(request)
+    try:return rollback()
+    except ValueError as e:raise HTTPException(status_code=400,detail=str(e))
+@get("/api/audit")
+async def audit(limit:int=50):
+    with connect() as c:rows=c.execute("SELECT * FROM audit ORDER BY id DESC LIMIT ?",(max(1,min(limit,200)),)).fetchall()
+    return {"items":[{"id":r["id"],"action":r["action"],"detail":json.loads(r["detail_json"]),"created_at":r["created_at"]} for r in rows]}
+@get("/api/settings")
+async def settings():return {"settings":get_settings(),"auto_promote":os.getenv("LIVING_AI_AUTO_PROMOTE","false").lower()=="true"}
+init_db()
+app=Litestar(route_handlers=[index,health,status,chat,memories,add,remove,ingest,train,proposals,propose,eval_route,promote_route,rollback_route,audit,settings],static_files_config=[StaticFilesConfig(path="/static",directories=[str(ROOT/"static")])],debug=False)
