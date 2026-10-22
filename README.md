@@ -159,3 +159,10 @@ The Worker Control dashboard provides persistent enable/disable and pause/resume
 The **Evaluation Lab** runs eight fixed regression cases against the deterministic planner and persists run history in SQLite. It checks bounded step counts, preserved goals, explicit review requirements, action allowlisting, payload limits, and Unicode input handling. Open the Evaluation Lab dashboard page or use `POST /api/evaluation/run`; inspect history with `GET /api/evaluation/runs`. Both endpoints require `LIVING_AI_ADMIN_TOKEN`.
 
 This is a structural regression suite, not a semantic-quality benchmark. It does not invoke remote models, train weights, approve plans, or execute actions. See [docs/EVALUATION_LAB.md](docs/EVALUATION_LAB.md).
+
+
+## Adaptive Learning & Regression Gate (Phase 12)
+
+The Evaluation Lab now includes a persistent promotion gate. By default it requires three recent clean offline regression runs with 100% structural checks and blocks if history is insufficient, a run falls below threshold, result data is invalid, or the latest score regresses against the prior baseline. API: `POST /api/evaluation/gate/check?window=3&min_score=1.0`; history: `GET /api/evaluation/gate/history?limit=10`.
+
+A pass means eligible for human review only. It does not promote/deploy code, change model weights, approve goals, or enable execution. See [docs/PROMOTION_GATE.md](docs/PROMOTION_GATE.md).
