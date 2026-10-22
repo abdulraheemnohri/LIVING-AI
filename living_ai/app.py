@@ -53,7 +53,7 @@ async def add(data:Memory,request:Request) -> dict[str, Any]:
     auth(request)
     try:return add_memory(data.content,data.source)
     except ValueError as e:raise HTTPException(status_code=400,detail=str(e))
-@delete("/api/memories/{memory_id:int}")
+@delete("/api/memories/{memory_id:int}", status_code=200)
 async def remove(memory_id:int,request:Request) -> dict[str, Any]:
     auth(request)
     if not delete_memory(memory_id):raise HTTPException(status_code=404,detail="Memory not found")
