@@ -52,3 +52,22 @@ def test_payload_size_is_bounded(tmp_path):
     tasks = TaskLifecycle(engine, tmp_path / "lifecycle.sqlite3")
     with pytest.raises(ValueError, match="16 KB"):
         tasks.submit("large", "save_note", {"text": "x" * 17000})
+
+
+def test_approval_is_explicit_and_audited(tmp_path):
+    engine = AutonomyEngine(tmp_path / "engine.sqlite3", auto_run_reversible=False)
+    tasks = TaskLifecycle(engine, tmp_path / "lifecycle.sqlite3")
+    task = tasks.submit("review note", "save_note", {"text": "approved text"})
+    held = tasks.run_once()[0]
+    assert held["status"] == "needs_approval"
+    approved = tasks.approve(task["task_id"])
+    assert approved["status"] == "queued"
+    assert tasks.events(task["task_id"])[0]["event"] == "approved"
+
+
+def test_approval_rejects_tasks_not_awaiting_review(tmp_path):
+    engine = AutonomyEngine(tmp_path / "engine.sqlite3")
+    tasks = TaskLifecycle(engine, tmp_path / "lifecycle.sqlite3")
+    task = tasks.submit("ordinary note", "save_note", {"text": "hello"})
+    with pytest.raises(ValueError, match="awaiting approval"):
+        tasks.approve(task["task_id"])

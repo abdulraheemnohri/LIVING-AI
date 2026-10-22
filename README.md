@@ -151,3 +151,8 @@ It starts no background worker: `run_once()` is an explicit call to one bounded 
 cycle. Only registered actions can be submitted, and the engine remains responsible for
 reversibility and approval policy. See [docs/TASK_LIFECYCLE.md](docs/TASK_LIFECYCLE.md).
 Tests are in `tests/test_lifecycle.py`.
+
+
+## Task API and dashboard controls (Phase 8)
+
+The **Tasks** dashboard view provides a task queue, detail/event inspection, explicit approval, bounded retry, and a manually triggered one-cycle run. Submission only queues a registered action; it does not execute it. Task API endpoints fail closed unless `LIVING_AI_ADMIN_TOKEN` is configured. No background worker is started. See [docs/TASK_API_DASHBOARD.md](docs/TASK_API_DASHBOARD.md) for endpoint contracts and security notes.
