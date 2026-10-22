@@ -3,57 +3,90 @@
 ## Runtime overview
 
 1. `static/index.html` provides the dashboard UI.
-2. `living_ai/app.py` exposes the Litestar HTTP API and initializes the SQLite database.
-3. `living_ai/engine.py` routes chat requests based on `LIVING_AI_MODEL_BACKEND`.
-4. `living_ai/litert_lm_backend.py` optionally loads a local `.litertlm` model through the LiteRT-LM Python runtime.
-5. `living_ai/memory.py` and `living_ai/db.py` persist and retrieve local notes/settings.
-6. `living_ai/model.py` and `living_ai/training.py` implement the character n-gram baseline.
-7. `living_ai/neural_lm.py` and `living_ai/neural_training.py` implement a separate, optional byte-level Transformer trained from random initialization.
-8. `living_ai/knowledge.py` parses supported text files and fetches user-requested public web pages.
-9. `living_ai/evolution.py` manages allowlisted settings proposals, evaluation, snapshots, promotion and rollback.
-10. Optional autonomy modules provide a review-first goal queue, registered-action worker, planner, scheduler, learning store, evaluation lab and regression gate. These modules must not be assumed active just because they exist in the repository; check whether their PRs are merged into the default branch and whether the UI/API routes are wired.
+2. `living_ai/app.py` exposes the Litestar HTTP API.
+3. `living_ai/engine.py` routes user chat to the selected response backend.
+4. `living_ai/litert_lm_backend.py` provides optional Model B inference using a local LiteRT-LM artifact.
+5. `living_ai/memory.py` and `living_ai/db.py` store local memories and settings.
+6. `living_ai/model.py` and `living_ai/training.py` implement trainable Model A as a character n-gram baseline.
+7. `living_ai/neural_lm.py` and `living_ai/neural_training.py` implement a separate optional byte-level Transformer trained from random initialization.
+8. `living_ai/knowledge.py` handles supported text import and user-requested public webpage import.
+9. Optional evolution/autonomy modules provide bounded, review-first actions; check merge state and route/UI wiring before treating staged modules as shipped.
 
-## Two-model intent
+## Model roles
 
-- **Model A:** character n-gram, used as a lightweight fallback/baseline. It is not the desired training target.
-- **Model B:** `litert-community/gemma-4-E2B-it-litert-lm`, served as a pre-converted `gemma-4-E2B-it.litertlm` artifact.
-- **Hybrid mode:** tries Model B first; on supported load/runtime failures, it falls back to saved memory or Model A.
-- **Training boundary:** LiteRT-LM is an inference runtime, not a training framework. A compatible external fine-tuning pipeline, evaluation step and conversion/export step are still needed to produce a new Model B artifact. Do not describe the Model B trainer as implemented until it exists and is tested.
-- The optional tiny Transformer is an independent legacy/educational feature, not Gemma training and not a substitute for the requested Model B training pipeline.
+**Model A — training target:** the locally maintained model that users can train/update. The current character n-gram implementation is lightweight and can learn character sequence statistics; it is not a neural instruction-following model. The optional tiny Transformer is separate and does not share weights with the n-gram model.
 
-## Request path
+**Model B — teacher/coach:** `litert-community/gemma-4-E2B-it-litert-lm`. It is loaded for inference and can help prepare, classify, label, deduplicate, explain or generate candidate training examples for Model A. Model B is not the training target and is not trained by this project.
+
+**Important status:** the intended Model B → Model A teacher-assisted workflow is not yet implemented end-to-end. The existing Model A training code remains independently usable. LiteRT-LM is an inference runtime, not a fine-tuning engine.
+
+## Intended Model A data sources
+
+- User-uploaded text files/datasets.
+- Files copied to the configured corpus directory.
+- User-selected, reviewed local memory exports.
+- User-selected, reviewed public-web imports.
+- Model B-prepared or Model B-generated candidate examples, visibly labelled as synthetic/teacher-produced.
+- Evaluation failures converted into candidate examples for review.
+
+Every source should pass format/size validation and provenance/privacy checks. No data should train automatically merely because it was imported or saved as memory.
+
+## Intended training pipeline
 
 ```text
-Browser
-  -> Litestar /api/chat
-  -> engine.respond(message)
-  -> SQLite lexical memory retrieval
-  -> selected backend
-       hybrid/litert_lm -> LiteRT-LM Gemma 4 E2B
-            hybrid failure -> local memory -> character n-gram -> starter response
-       tiny_transformer -> local PyTorch checkpoint
-       char_ngram -> local n-gram checkpoint or memory/starter response
-  -> JSON response
+Upload / corpus folder / selected memory / reviewed web data
+                         |
+                         v
+              Parse + validate + preview
+                         |
+              Optional Model B assistance
+                         |
+                         v
+         Deduplicate + provenance + human review
+                         |
+                         v
+          Versioned dataset and training manifest
+                         |
+                         v
+                Bounded Model A training
+                         |
+                         v
+              Candidate checkpoint version
+                         |
+                         v
+           Fixed evaluation + regression gate
+                         |
+                         v
+                Human approval to promote
+                         |
+                  Rollback available
 ```
 
-## Storage
+Model B output is untrusted candidate data. It must never be executed as code or allowed to overwrite active checkpoints directly.
 
-- SQLite database and corpus exports live under `LIVING_AI_DATA_DIR` (default `./data`).
-- Character n-gram checkpoint default: `models/char_ngram.json`.
-- Tiny Transformer checkpoint default: `models/tiny_transformer/`.
-- Gemma LiteRT-LM artifact default: `models/litert/gemma-4-E2B-it.litertlm`.
-- Keep model files, local databases, exported corpora and secrets out of public commits.
+## Chat request path
 
-## Trust boundaries
+```text
+Browser -> Litestar /api/chat -> engine
+  -> optional local memory context
+  -> Model B / LiteRT-LM when selected
+  -> fallback to local memory or Model A when hybrid mode allows
+  -> response
+```
 
-- Imported text and retrieved memories are untrusted data, never executable instructions.
-- Web import is explicit and intended for public text pages; it is not a general browser or a complete SSRF-proof network sandbox.
+## Storage conventions
+
+- SQLite and user data: `LIVING_AI_DATA_DIR` (default `./data`).
+- Model A n-gram checkpoint: `models/char_ngram.json`.
+- Optional tiny Transformer: `models/tiny_transformer/`.
+- Model B artifact: `models/litert/gemma-4-E2B-it.litertlm`.
+- Versioned datasets/checkpoints and audit records are intended additions for the full teacher-assisted training workflow; do not assume all are implemented.
+
+## Trust and safety boundaries
+
+- Uploaded/imported content and Model B output are untrusted data.
+- Training is explicit and bounded; memory import never directly changes model weights.
+- No arbitrary shell execution, package installation or source-code self-rewriting.
 - Remote inference is opt-in and transmits prompts to the configured provider.
-- Mutation routes use bearer authentication only when `LIVING_AI_ADMIN_TOKEN` is set. An empty token means that token authentication is not enforced; therefore keep the server bound to localhost unless another access-control layer is configured.
-- Evolution changes are restricted to a small settings allowlist and use snapshots/audit/rollback.
-- The bounded autonomy foundation is not a general shell agent. Registered-action checks, explicit approvals and manual execution boundaries must remain in force.
-- No source-code self-rewrite, arbitrary shell execution, automatic package installation or unattended crawler is part of the intended safe baseline.
-
-## Known validation gaps
-
-The repository files and docs can be inspected through GitHub, but that alone does not prove the application installs or runs. A release-ready review must run the test suite and lint checks in the target Debian/Python environment, verify the exact LiteRT-LM Python API against the installed runtime, exercise Model B generation, verify fallback behavior, and check all API routes/UI pages. See [PROJECT_A_TO_Z.md](PROJECT_A_TO_Z.md) for the current checklist.
+- Mutation endpoints are protected by the configured admin-token mechanism only where the shared auth guard is applied. Empty token means no token-based protection; keep the server local by default.
+- Model B cannot approve its own candidate dataset or promote a checkpoint. Evaluation qualifies candidates for review; a human decides promotion.
