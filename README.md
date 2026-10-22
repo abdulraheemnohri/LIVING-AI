@@ -2,7 +2,7 @@
 
 A local-first AI workbench for Android Debian/Linux terminal environments. It combines persistent SQLite memory, a character n-gram baseline, an original tiny byte-level Transformer trained from random initialization, mobile file and public webpage knowledge import, an optional OpenAI-compatible endpoint, and reversible settings evolution.
 
-> This is an evolving engineering project, not a claim of consciousness or frontier-level intelligence. SmolLM3-3B-Base is a pretrained base checkpoint and may not follow instructions as reliably as an instruction-tuned model. The built-in n-gram model remains the lightweight default.
+> This is an evolving engineering project, not a claim of consciousness or frontier-level intelligence. The built-in n-gram model remains the lightweight default.
 
 ## Quick start (Debian/Linux on Android)
 
@@ -26,7 +26,7 @@ Install a compatible PyTorch build and run:
 
 Or run the low-resource helper: `bash scripts/train_from_scratch_android.sh`.
 
-Put lawful UTF-8 .txt or .md files in data/corpus first. This creates a tiny byte-level causal Transformer with random initial weights. It can encode Urdu and other Unicode scripts, but byte-level learning is inefficient and a small dataset will usually produce weak, repetitive text. Training can be slow and heat a phone. Start with width 32–64, two layers, block size 32–64, and a few hundred steps. PyTorch wheels may not be available for every Android Debian architecture.
+Put lawful UTF-8 .txt, .md or .json files in data/corpus first. This creates a tiny byte-level causal Transformer with random initial weights. It can encode Urdu and other Unicode scripts, but byte-level learning is inefficient and a small dataset will usually produce weak, repetitive text. Training can be slow and heat a phone. Start with width 32–64, two layers, block size 32–64, and a few hundred steps. PyTorch wheels may not be available for every Android Debian architecture.
 
 To serve the trained checkpoint, set LIVING_AI_MODEL_BACKEND=tiny_transformer and LIVING_AI_TINY_MODEL_DIR=models/tiny_transformer in .env, then restart. The dashboard Training page also includes the from-scratch trainer.
 
@@ -36,7 +36,7 @@ See docs/TRAIN_FROM_SCRATCH.md for details.
 
 Open **Import Data** in the dashboard. Select local `.txt`, `.md`, or `.json` files (up to 2 MB each), or paste a public webpage URL. JSON is validated; imported text is chunked into SQLite memory. The online importer limits pages to 1 MB, checks for public IP addresses, blocks redirects and accepts text content only. Sites that require login or JavaScript are not supported.
 
-Imported knowledge is searchable memory; it does not automatically train the model. To train, place lawful UTF-8 TXT/Markdown/JSON files in `data/corpus/`.
+Imported knowledge is searchable memory; it does not automatically train the model. Use **Export saved memory to training corpus** on the Import Data page to prepare imported files and webpages for training. Then train from `data/corpus/`.
 
 ## Core capabilities
 
@@ -56,7 +56,7 @@ Place permitted plain-text files in `data/corpus/`, then use **Training Lab → 
 python -m living_ai.train --input data/corpus --output models/char_ngram.json
 ```
 
-This trains the small character n-gram baseline, not the SmolLM3 transformer. Fine-tuning a 3B transformer is a separate compute-intensive workflow; it is not performed by this command.
+This trains the small character n-gram baseline. The from-scratch Transformer has a separate training command; no pretrained model is included.
 
 ## Optional remote provider
 
@@ -79,9 +79,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/ANDROID_DEBIAN.md](do
 
 ## Current limitations
 
-- SmolLM3-3B-Base is a base model, not instruction-tuned, and can produce weak or incoherent continuations.
 - The tiny from-scratch model is educational, not assistant-grade; training may be slow and PyTorch wheel support depends on architecture.
-- SmolLM3 model loading may exceed Android device RAM; PyTorch wheel support depends on architecture.
 - No unattended crawler, PDF/YouTube ingestion, transformer fine-tuning, automatic online training, or autonomous source-code self-update is implemented; web import is user-initiated.
 - App source-code self-updates and arbitrary code execution are intentionally excluded.
 - Android CPU, RAM, storage, and thermal limits constrain inference and training.
