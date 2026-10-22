@@ -29,3 +29,7 @@ does not load model weights or guarantee that enough RAM is available to generat
 ## From-scratch training boundary
 
 The dashboard's native-model trainer reads from the configured data directory's corpus folder and writes only to the repository's models/tiny_transformer folder. Dashboard training inputs have conservative step, batch, sequence, width, and layer limits; CLI training remains more configurable. Training can still consume substantial CPU and memory, so use a small configuration on mobile hardware. The checkpoint is a local state dictionary, not an artifact to download from untrusted sources.
+
+## Knowledge import
+
+The mobile importer accepts TXT, Markdown and JSON text files up to 2 MB and stores extracted text in local memory. Public webpage import is user-initiated, accepts only text-oriented content types, limits response size, blocks obvious non-public destinations, and does not follow redirects. This is a best-effort defense, not a hardened general-purpose browser; keep the server bound to localhost and use an admin token before network exposure. Treat imported pages as untrusted data. Importing online content does not automatically train model weights.
