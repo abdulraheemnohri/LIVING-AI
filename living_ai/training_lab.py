@@ -130,3 +130,33 @@ def approve_teacher_candidate(candidate_id: str) -> dict:
     audit("training.teacher_approve", {"id": candidate_id, "approved_path": str(target)})
     return {"id": candidate_id, "status": "human-approved", "path": str(target),
             "note": "This file is staged separately. Review it before copying into data/corpus and starting training."}
+
+def stage_for_training(item_id: str, kind: str = "dataset") -> dict:
+    """Copy a reviewed dataset or approved teacher candidate into the active corpus."""
+    if not re.fullmatch(r"[a-f0-9]{16}", item_id):
+        raise ValueError("Invalid item ID")
+    manifest = _read_manifest()
+    if kind == "dataset":
+        match = next((x for x in manifest["datasets"] if x.get("id") == item_id), None)
+        if not match:
+            raise ValueError("Dataset not found")
+        source = Path(match["path"])
+    elif kind == "teacher":
+        record = next((x for x in manifest.get("runs", [])
+                       if x.get("id") == item_id and x.get("type") == "teacher-prepare"), None)
+        if not record or record.get("status") != "human-approved" or not record.get("approved_path"):
+            raise ValueError("Teacher candidate must be explicitly approved before staging")
+        source = Path(record["approved_path"])
+    else:
+        raise ValueError("kind must be dataset or teacher")
+    if not source.is_file() or source.stat().st_size > MAX_DATASET_BYTES:
+        raise ValueError("Source file is missing or exceeds the 2 MB limit")
+    corpus = data_dir() / "corpus"
+    corpus.mkdir(parents=True, exist_ok=True)
+    target = corpus / f"reviewed-{kind}-{item_id}.txt"
+    if target.exists():
+        raise ValueError("This item is already staged in the training corpus")
+    target.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+    audit("training.stage_for_training", {"id": item_id, "kind": kind, "target": str(target)})
+    return {"id": item_id, "kind": kind, "status": "staged-for-training", "path": str(target),
+            "note": "Explicit training is still required. Review source quality and licensing first."}
