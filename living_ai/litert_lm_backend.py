@@ -41,7 +41,7 @@ def generate(prompt: str, max_new_tokens: int = 256) -> str:
     engine_args = {"backend": backend} if backend is not None else {}
     pieces: list[str] = []
     with litert_lm.Engine(str(model_path), **engine_args) as engine:
-        with engine.create_conversation() as conversation:
+        with engine.create_conversation(max_output_tokens=max(1, min(4096, int(max_new_tokens)))) as conversation:
             for chunk in conversation.send_message_async(prompt):
                 for item in chunk.get("content", []):
                     text = item.get("text")
