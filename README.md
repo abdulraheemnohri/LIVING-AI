@@ -142,3 +142,12 @@ engine's registered-action policy remains the execution gate.
 
 See [docs/EVOLUTION_LOOP.md](docs/EVOLUTION_LOOP.md). Tests are in
 `tests/test_coordinator.py`.
+
+## Task lifecycle and bounded retries (Phase 7)
+
+`living_ai.lifecycle.TaskLifecycle` wraps the autonomy queue with logical task IDs,
+persisted lifecycle states, event history, and explicit bounded retries for failed tasks.
+It starts no background worker: `run_once()` is an explicit call to one bounded engine
+cycle. Only registered actions can be submitted, and the engine remains responsible for
+reversibility and approval policy. See [docs/TASK_LIFECYCLE.md](docs/TASK_LIFECYCLE.md).
+Tests are in `tests/test_lifecycle.py`.
