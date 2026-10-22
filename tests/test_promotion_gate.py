@@ -45,6 +45,16 @@ def _seed_runs(tmp_path, scores):
     db.close()
 
 
+def test_gate_fails_closed_when_no_evaluation_history_exists(client):
+    response = client.post("/api/evaluation/gate/check?window=3&min_score=1.0",
+                           headers={"Authorization": "Bearer test-admin-token"}, json={})
+    assert response.status_code == 201
+    result = response.json()
+    assert result["eligible"] is False
+    assert result["runs_checked"] == 0
+    assert any("Need 3 recent" in reason for reason in result["reasons"])
+
+
 def test_gate_fails_closed_when_history_is_too_short(client, tmp_path):
     _seed_runs(tmp_path, [1.0, 1.0])
     response = client.post("/api/evaluation/gate/check?window=3&min_score=1.0",
