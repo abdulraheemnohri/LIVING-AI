@@ -13,6 +13,7 @@ from .training import train_directory
 from .neural_training import train_small_transformer
 from .knowledge import parse_document, split_text, fetch_public_page
 from .evolution import create_proposal,list_proposals,evaluate,promote,rollback
+from .planner_api import planner_prepare,planner_proposals,planner_submit,planner_record_evaluation,planner_learning_summary
 ROOT=Path(__file__).resolve().parent.parent
 def auth(req):
     token=os.getenv("LIVING_AI_ADMIN_TOKEN","").strip()
@@ -170,4 +171,4 @@ async def model_status() -> dict[str, Any]:
             "remote_provider_enabled":os.getenv("LIVING_AI_ALLOW_REMOTE_PROVIDER","false").lower()=="true"}
 
 init_db()
-app=Litestar(route_handlers=[index,health,status,chat,memories,add,remove,ingest,ingest_file,ingest_url,export_corpus,train,proposals,propose,eval_route,promote_route,rollback_route,audit,settings,train_scratch,model_status],static_files_config=[StaticFilesConfig(path="/static",directories=[str(ROOT/"static")])],debug=False)
+app=Litestar(route_handlers=[index,health,status,chat,memories,add,remove,ingest,ingest_file,ingest_url,export_corpus,train,proposals,propose,eval_route,promote_route,rollback_route,audit,settings,train_scratch,model_status,planner_prepare,planner_proposals,planner_submit,planner_record_evaluation,planner_learning_summary],static_files_config=[StaticFilesConfig(path="/static",directories=[str(ROOT/"static")])],debug=False)
