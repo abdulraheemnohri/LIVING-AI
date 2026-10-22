@@ -40,3 +40,19 @@ def test_teacher_failure_does_not_create_candidates(tmp_path, monkeypatch):
     with pytest.raises(RuntimeError, match="no candidates created"):
         training_lab.prepare_teacher_corpus("Source facts.", 1)
     assert training_lab.training_history() == []
+
+def test_staging_requires_teacher_approval_and_never_trains_automatically(tmp_path, monkeypatch):
+    monkeypatch.setenv("LIVING_AI_DATA_DIR", str(tmp_path / "data"))
+    dataset = training_lab.ingest_dataset("facts.txt", "Reviewed facts.", "manual")
+    staged = training_lab.stage_for_training(dataset["id"], "dataset")
+    assert staged["status"] == "staged-for-training"
+    assert (tmp_path / "data" / "corpus" / f"reviewed-dataset-{dataset['id']}.txt").read_text() == "Reviewed facts."
+    with pytest.raises(ValueError, match="already staged"):
+        training_lab.stage_for_training(dataset["id"], "dataset")
+    monkeypatch.setattr("living_ai.litert_lm_backend.generate", lambda *a, **k: "Teacher candidate")
+    candidate = training_lab.prepare_teacher_corpus("Source facts.", 1)
+    with pytest.raises(ValueError, match="explicitly approved"):
+        training_lab.stage_for_training(candidate["id"], "teacher")
+    training_lab.approve_teacher_candidate(candidate["id"])
+    staged_teacher = training_lab.stage_for_training(candidate["id"], "teacher")
+    assert staged_teacher["status"] == "staged-for-training"
