@@ -160,3 +160,8 @@ The optional `living_ai.learning.LearningStore` records reviewed outcomes and sc
 The `living_ai.coordinator.EvolutionCoordinator` connects the planner, optional cognitive adapter, SQLite evaluation memory, and persistent autonomy queue. `prepare()` returns a plan alongside relevant past evaluations without queueing or executing it; `submit_for_review()` queues proposals only; and `record_evaluation()` stores feedback provided by a caller or human reviewer. Prior evaluations are shown as context and are not injected into model prompts. Remote planning remains opt-in, and the autonomy engine's registered-action policy remains the execution gate.
 
 See [docs/EVOLUTION_LOOP.md](docs/EVOLUTION_LOOP.md). Tests are in `tests/test_coordinator.py`.
+
+
+## Persistent AI Planner dashboard (review-first)
+
+The AI Planner can prepare bounded plans, persist them for inspection, submit supported `save_note` steps to the review queue, and record explicit human/caller evaluation feedback. It does not execute a plan during preparation or submission. Admin routes require `LIVING_AI_ADMIN_TOKEN`. Remote planning additionally requires request-level opt-in and `LIVING_AI_ALLOW_REMOTE_PROVIDER=true`. See `docs/PLANNER_API.md`.
