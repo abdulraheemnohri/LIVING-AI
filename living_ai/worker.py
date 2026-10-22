@@ -119,7 +119,7 @@ class ControlledWorker:
         paused = int(cycles >= state["max_cycles_per_run"])
         self._change("cycle_completed", {"result_count": len(results), "statuses": [x.get("status") for x in results]},
                      cycles_this_run=cycles, paused=paused)
-        return {"status": "ran", "results": results, "worker": self._state(), "execution_performed": bool(results)}
+        return {"status": "ran", "results": results, "worker": self._state(), "execution_performed": any(x.get("status") in {"completed", "failed"} for x in results)}
 
     def goals(self, limit: int = 50) -> list[dict[str, Any]]:
         return self.engine.list_goals(max(1, min(int(limit), 200)))
