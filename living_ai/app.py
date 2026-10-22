@@ -10,6 +10,7 @@ from .db import init_db,connect,get_settings,data_dir
 from .memory import add_memory,search_memories,delete_memory
 from .engine import respond
 from .training import train_directory
+from .training_lab import list_datasets, ingest_dataset, prepare_teacher_corpus, training_history
 from .neural_training import train_small_transformer
 from .knowledge import parse_document, split_text, fetch_public_page
 from .evolution import create_proposal,list_proposals,evaluate,promote,rollback
@@ -23,6 +24,13 @@ class FileIngest(BaseModel): filename:str=Field(min_length=1,max_length=255);con
 class URLIngest(BaseModel): url:str=Field(min_length=8,max_length=2048)
 class Proposal(BaseModel): title:str;changes:dict
 class Train(BaseModel): input_dir:str="data/corpus"
+class DatasetUpload(BaseModel):
+    filename:str=Field(min_length=1,max_length=255)
+    content:str=Field(min_length=1,max_length=2_000_000)
+    source:str=Field(default="manual-upload",max_length=100)
+class TeacherPrepare(BaseModel):
+    text:str=Field(min_length=1,max_length=12000)
+    count:int=Field(default=3,ge=1,le=8)
 class TrainScratch(BaseModel):
     input_dir:str="data/corpus"
     output_dir:str="models/tiny_transformer"
@@ -107,6 +115,31 @@ async def train(data:Train,request:Request) -> dict[str, Any]:
     auth(request)
     try:return train_directory(data.input_dir)
     except ValueError as e:raise HTTPException(status_code=400,detail=str(e))
+
+@get("/api/training/datasets")
+async def training_datasets() -> dict[str, Any]:
+    return {"items": list_datasets()}
+
+@post("/api/training/datasets")
+async def upload_training_dataset(data: DatasetUpload, request: Request) -> dict[str, Any]:
+    auth(request)
+    try:
+        return ingest_dataset(data.filename, data.content, data.source)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@post("/api/training/teacher-prepare")
+async def teacher_prepare(data: TeacherPrepare, request: Request) -> dict[str, Any]:
+    auth(request)
+    try:
+        return prepare_teacher_corpus(data.text, data.count)
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@get("/api/training/history")
+async def training_runs() -> dict[str, Any]:
+    return {"items": training_history()}
+
 @get("/api/evolution/proposals")
 async def proposals() -> dict[str, Any]:return {"items":list_proposals()}
 @post("/api/evolution/proposals")
@@ -188,4 +221,4 @@ async def model_status() -> dict[str, Any]:
     }
 
 init_db()
-app=Litestar(route_handlers=[index,health,status,chat,memories,add,remove,ingest,ingest_file,ingest_url,export_corpus,train,proposals,propose,eval_route,promote_route,rollback_route,audit,settings,train_scratch,model_status],static_files_config=[StaticFilesConfig(path="/static",directories=[str(ROOT/"static")])],debug=False)
+app=Litestar(route_handlers=[index,health,status,chat,memories,add,remove,ingest,ingest_file,ingest_url,export_corpus,train,training_datasets,upload_training_dataset,teacher_prepare,training_runs,proposals,propose,eval_route,promote_route,rollback_route,audit,settings,train_scratch,model_status],static_files_config=[StaticFilesConfig(path="/static",directories=[str(ROOT/"static")])],debug=False)
