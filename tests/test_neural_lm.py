@@ -27,3 +27,23 @@ def test_format_rejected():
     config["format_version"] = 999
     with pytest.raises(ValueError):
         validate_config(config)
+
+
+def test_collect_text_accepts_utf8_and_ignores_other_extensions(tmp_path):
+    from living_ai.neural_training import collect_text
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    (corpus / "urdu.txt").write_text("سلام دنیا " * 10, encoding="utf-8")
+    (corpus / "ignored.json").write_text("not training data", encoding="utf-8")
+    text, count = collect_text(corpus)
+    assert "سلام" in text
+    assert count == 1
+
+
+def test_collect_text_rejects_too_small_corpus(tmp_path):
+    from living_ai.neural_training import collect_text
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    (corpus / "small.txt").write_text("tiny", encoding="utf-8")
+    with pytest.raises(ValueError, match="too small"):
+        collect_text(corpus)
