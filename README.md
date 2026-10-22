@@ -86,3 +86,31 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/ANDROID_DEBIAN.md](do
 
 
 **Pretrained model removal:** The SmolLM3-3B-Base / Hugging Face Transformers backend has been removed. The default install does not include Transformers.
+
+
+## Bounded autonomy engine
+
+The optional `living_ai.autonomous.AutonomyEngine` adds a persistent goal queue, bounded
+execution cycles, a registered-action policy, reversible-action auto-run, approval holding,
+saved notes, and an auditable run history. It uses only the Python standard library and does
+not launch shell commands or rewrite source code.
+
+See [docs/AUTONOMY.md](docs/AUTONOMY.md). Run the tests with `python -m pytest`.
+This is a controlled foundation: it does not start a background daemon automatically, and unknown
+or non-reversible actions are held instead of executed.
+
+
+## Opt-in autonomy scheduler
+
+`living_ai.scheduler.AutonomyScheduler` adds explicit pause/resume, interval-based cycle gating,
+disable/enable controls, status reporting, and a per-run cycle budget. It never starts itself,
+creates a background thread, or bypasses the autonomy engine's action policy.
+
+See [docs/SCHEDULER.md](docs/SCHEDULER.md). Tests are in `tests/test_scheduler.py`.
+
+
+## Goal planner (Phase 3 foundation)
+
+`living_ai.planner.GoalPlanner` creates bounded, inspectable goal proposals and queues them for
+review without executing them. The baseline planner is deterministic and conservative; it does
+not call a model or access the network. See [docs/PLANNER.md](docs/PLANNER.md).
