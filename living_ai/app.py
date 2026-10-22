@@ -10,7 +10,7 @@ from .db import init_db,connect,get_settings,data_dir
 from .memory import add_memory,search_memories,delete_memory
 from .engine import respond
 from .training import train_directory
-from .training_lab import list_datasets, ingest_dataset, prepare_teacher_corpus, training_history, approve_teacher_candidate
+from .training_lab import list_datasets, ingest_dataset, prepare_teacher_corpus, training_history, approve_teacher_candidate, stage_for_training
 from .neural_training import train_small_transformer
 from .knowledge import parse_document, split_text, fetch_public_page
 from .evolution import create_proposal,list_proposals,evaluate,promote,rollback
@@ -144,6 +144,15 @@ async def teacher_approve(candidate_id: str, request: Request) -> dict[str, Any]
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
+@post("/api/training/stage/{kind:str}/{item_id:str}")
+async def stage_training_item(kind: str, item_id: str, request: Request) -> dict[str, Any]:
+    auth(request)
+    try:
+        return stage_for_training(item_id, kind)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @get("/api/training/history")
 async def training_runs() -> dict[str, Any]:
     return {"items": training_history()}
@@ -229,4 +238,4 @@ async def model_status() -> dict[str, Any]:
     }
 
 init_db()
-app=Litestar(route_handlers=[index,health,status,chat,memories,add,remove,ingest,ingest_file,ingest_url,export_corpus,train,training_datasets,upload_training_dataset,teacher_prepare,teacher_approve,training_runs,proposals,propose,eval_route,promote_route,rollback_route,audit,settings,train_scratch,model_status],static_files_config=[StaticFilesConfig(path="/static",directories=[str(ROOT/"static")])],debug=False)
+app=Litestar(route_handlers=[index,health,status,chat,memories,add,remove,ingest,ingest_file,ingest_url,export_corpus,train,training_datasets,upload_training_dataset,teacher_prepare,teacher_approve,stage_training_item,training_runs,proposals,propose,eval_route,promote_route,rollback_route,audit,settings,train_scratch,model_status],static_files_config=[StaticFilesConfig(path="/static",directories=[str(ROOT/"static")])],debug=False)
