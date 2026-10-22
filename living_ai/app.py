@@ -36,7 +36,7 @@ class TrainScratch(BaseModel):
 @get("/")
 async def index():return File(path=ROOT/"static"/"index.html",media_type="text/html")
 @get("/api/health")
-async def health():return {"ok":True,"name":"LIVING AI","version":"0.3.0"}
+async def health():return {"ok":True,"name":"LIVING AI","version":"0.4.0"}
 @get("/api/status")
 async def status():
     with connect() as c: n=c.execute("SELECT COUNT(*) n FROM memories").fetchone()["n"];p=c.execute("SELECT COUNT(*) n FROM proposals").fetchone()["n"]
@@ -80,6 +80,25 @@ def ingest_url(data:URLIngest,request:Request):
         saved=[add_memory(chunk,f"url:{url}#part-{index}") for index,chunk in enumerate(chunks,1)]
         return {"ingested":True,"url":url,"chunks":len(saved),"characters":len(text),"items":saved}
     except ValueError as e: raise HTTPException(status_code=400,detail=str(e))
+@post("/api/knowledge/export-corpus")
+async def export_corpus(request:Request):
+    auth(request)
+    target=data_dir()/"corpus"/"imported_memory_corpus.txt"
+    target.parent.mkdir(parents=True,exist_ok=True)
+    with connect() as db:
+        rows=db.execute("SELECT source,content FROM memories ORDER BY id ASC").fetchall()
+    parts=[]
+    total=0
+    for row in rows:
+        piece=f"Source: {row['source']}\n{row['content']}\n\n"
+        size=len(piece.encode("utf-8"))
+        if total+size>5_000_000: break
+        parts.append(piece);total+=size
+    if not parts: raise HTTPException(status_code=400,detail="No saved memories to export")
+    temp=target.with_suffix(".txt.tmp")
+    temp.write_text("".join(parts),encoding="utf-8")
+    temp.replace(target)
+    return {"exported":True,"path":str(target),"documents":len(parts),"bytes":total,"note":"Review licensing and quality before training."}
 @post("/api/training/train")
 async def train(data:Train,request:Request):
     auth(request)
@@ -147,4 +166,4 @@ async def model_status():
             "remote_provider_enabled":os.getenv("LIVING_AI_ALLOW_REMOTE_PROVIDER","false").lower()=="true"}
 
 init_db()
-app=Litestar(route_handlers=[index,health,status,chat,memories,add,remove,ingest,ingest_file,ingest_url,train,proposals,propose,eval_route,promote_route,rollback_route,audit,settings,train_scratch,model_status],static_files_config=[StaticFilesConfig(path="/static",directories=[str(ROOT/"static")])],debug=False)
+app=Litestar(route_handlers=[index,health,status,chat,memories,add,remove,ingest,ingest_file,ingest_url,export_corpus,train,proposals,propose,eval_route,promote_route,rollback_route,audit,settings,train_scratch,model_status],static_files_config=[StaticFilesConfig(path="/static",directories=[str(ROOT/"static")])],debug=False)
