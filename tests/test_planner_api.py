@@ -15,7 +15,7 @@ def client(tmp_path, monkeypatch):
     with TestClient(app) as test_client:
         yield test_client
     planner_api._engine = None
-    planner_api._coordinator = None
+    planner_api._coordinator_instance = None
 
 
 def test_prepare_is_persistent_and_does_not_submit(client):
