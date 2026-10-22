@@ -33,9 +33,14 @@ def _seed_runs(tmp_path, scores):
     )""")
     now = time.time()
     for index, score in enumerate(scores):
-        results = [{"case_id": "case-a", "passed": score >= 1.0, "errors": [] if score >= 1.0 else ["actions_allowlisted"]}]
+        passed_count = round(score * 8)
+        results = [
+            {"case_id": f"case-{case_index}", "passed": case_index < passed_count,
+             "errors": [] if case_index < passed_count else ["actions_allowlisted"]}
+            for case_index in range(8)
+        ]
         db.execute("INSERT INTO evaluation_runs VALUES(?,?,?,?,?,?)",
-                   (f"run-{index}", now + index, int(score * 8), 8, score, json.dumps(results)))
+                   (f"run-{index}", now + index, passed_count, 8, round(passed_count / 8, 4), json.dumps(results)))
     db.commit()
     db.close()
 
@@ -65,7 +70,7 @@ def test_gate_blocks_a_regression_and_persists_decision(client, tmp_path):
 
 
 def test_gate_allows_clean_window_only_for_human_review(client, tmp_path):
-    _seed_runs(tmp_path, [1.0, 1.0, 1.0, 0.9])
+    _seed_runs(tmp_path, [1.0, 1.0, 1.0, 0.875])
     response = client.post("/api/evaluation/gate/check?window=3&min_score=1.0",
                            headers={"Authorization": "Bearer test-admin-token"}, json={})
     assert response.status_code == 201
