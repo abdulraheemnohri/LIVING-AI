@@ -163,3 +163,24 @@ class TaskLifecycle:
                 (task_id, limit),
             ).fetchall()
         return [dict(row) for row in rows]
+
+
+    def approve(self, task_id: str) -> dict[str, Any]:
+        """Approve one held task attempt; the engine still enforces its action policy."""
+        with self._db() as db:
+            row = db.execute(
+                "SELECT * FROM lifecycle_tasks WHERE task_id=?", (task_id,)
+            ).fetchone()
+            if row is None:
+                raise KeyError("task not found")
+            if row["status"] != "needs_approval":
+                raise ValueError("only tasks awaiting approval can be approved")
+            if not self.engine.approve_goal(row["current_goal_id"]):
+                raise ValueError("the current engine goal is no longer awaiting approval")
+            now = time.time()
+            db.execute(
+                "UPDATE lifecycle_tasks SET status='queued',updated_at=? WHERE task_id=?",
+                (now, task_id),
+            )
+            self._event(db, task_id, "approved", f"goal_id={row['current_goal_id']}")
+        return self.get(task_id)
