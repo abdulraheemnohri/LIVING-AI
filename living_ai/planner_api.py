@@ -54,19 +54,19 @@ def _connect():
 
 
 _engine: AutonomyEngine | None = None
-_coordinator: EvolutionCoordinator | None = None
+_coordinator_instance: EvolutionCoordinator | None = None
 
 
-def _coordinator() -> EvolutionCoordinator:
-    global _engine, _coordinator
-    if _coordinator is None:
+def get_coordinator() -> EvolutionCoordinator:
+    global _engine, _coordinator_instance
+    if _coordinator_instance is None:
         root = data_dir()
         _engine = AutonomyEngine(root / "autonomy.sqlite3")
-        _coordinator = EvolutionCoordinator(
+        _coordinator_instance = EvolutionCoordinator(
             _engine,
             learning=LearningStore(root / "learning.sqlite3"),
         )
-    return _coordinator
+    return _coordinator_instance
 
 
 class PrepareRequest(BaseModel):
@@ -92,7 +92,7 @@ class EvaluationRequest(BaseModel):
 def planner_prepare(data: PrepareRequest, request: Request) -> dict[str, Any]:
     _require_admin(request)
     remote_allowed = data.allow_remote and os.getenv("LIVING_AI_ALLOW_REMOTE_PROVIDER", "false").lower() == "true"
-    result = _coordinator().prepare(data.goal, allow_remote=remote_allowed, memory_limit=data.memory_limit)
+    result = get_coordinator().prepare(data.goal, allow_remote=remote_allowed, memory_limit=data.memory_limit)
     plan_data = GoalPlanner.to_dict(result.plan)
     now = time.time()
     with _connect() as db:
