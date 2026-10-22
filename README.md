@@ -129,3 +129,16 @@ See [docs/COGNITIVE_CORE.md](docs/COGNITIVE_CORE.md).
 The optional `living_ai.learning.LearningStore` records reviewed outcomes and scores in local SQLite,
 retrieves similar prior evaluations using lightweight lexical overlap, and summarizes score trends.
 It does not independently verify success or modify model weights. See [docs/LEARNING.md](docs/LEARNING.md).
+
+## Review-first evolution coordinator (Phase 6)
+
+`living_ai.coordinator.EvolutionCoordinator` connects the planner, optional cognitive
+adapter, SQLite evaluation memory, and persistent autonomy queue. `prepare()` returns
+a plan alongside relevant past evaluations without queueing or executing it;
+`submit_for_review()` queues proposals only; and `record_evaluation()` stores feedback
+provided by a caller or human reviewer. Prior evaluations are shown as context and are
+not injected into model prompts. Remote planning remains opt-in, and the autonomy
+engine's registered-action policy remains the execution gate.
+
+See [docs/EVOLUTION_LOOP.md](docs/EVOLUTION_LOOP.md). Tests are in
+`tests/test_coordinator.py`.
