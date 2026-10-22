@@ -5,6 +5,7 @@ import json
 import os
 import sqlite3
 import time
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -27,7 +28,8 @@ def _require_admin(request: Request) -> None:
         raise HTTPException(status_code=401, detail="Valid admin bearer token required")
 
 
-def _connect() -> sqlite3.Connection:
+@contextmanager
+def _connect():
     root = data_dir()
     db = sqlite3.connect(root / "prepared_plans.sqlite3", timeout=10)
     db.row_factory = sqlite3.Row
@@ -44,7 +46,11 @@ def _connect() -> sqlite3.Connection:
             submitted_at REAL
         )
     """)
-    return db
+    try:
+        yield db
+        db.commit()
+    finally:
+        db.close()
 
 
 _engine: AutonomyEngine | None = None
