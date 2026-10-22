@@ -1,4 +1,4 @@
-import os,json,importlib.util
+import os,json
 from pathlib import Path
 from litestar import Litestar,get,post,delete,Request
 from litestar.exceptions import HTTPException
@@ -149,6 +149,7 @@ def train_scratch(data:TrainScratch,request:Request):
 @get("/api/model/status")
 async def model_status():
     backend=os.getenv("LIVING_AI_MODEL_BACKEND","char_ngram").strip().lower()
+    if backend not in {"char_ngram","tiny_transformer","from_scratch","native_transformer"}: backend="char_ngram"
     tiny_dir=Path(os.getenv("LIVING_AI_TINY_MODEL_DIR","models/tiny_transformer"))
     try:
         import torch
