@@ -6,7 +6,7 @@ Phase 6 connects the goal planner, optional cognitive adapter, local evaluation 
 
 ```python
 from living_ai.autonomous import AutonomyEngine
-from living_ai.evolution import EvolutionCoordinator
+from living_ai.coordinator import EvolutionCoordinator
 from living_ai.learning import LearningStore
 
 engine = AutonomyEngine("data/autonomy.sqlite3")
