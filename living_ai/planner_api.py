@@ -92,7 +92,7 @@ class EvaluationRequest(BaseModel):
 def planner_prepare(data: PrepareRequest, request: Request) -> dict[str, Any]:
     _require_admin(request)
     remote_allowed = data.allow_remote and os.getenv("LIVING_AI_ALLOW_REMOTE_PROVIDER", "false").lower() == "true"
-    result = getget_coordinator().prepare(data.goal, allow_remote=remote_allowed, memory_limit=data.memory_limit)
+    result = get_coordinator().prepare(data.goal, allow_remote=remote_allowed, memory_limit=data.memory_limit)
     plan_data = GoalPlanner.to_dict(result.plan)
     now = time.time()
     with _connect() as db:
