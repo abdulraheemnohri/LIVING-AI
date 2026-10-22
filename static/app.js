@@ -28,3 +28,24 @@ if($("#fileimportform"))$("#fileimportform").onsubmit=async e=>{e.preventDefault
 if($("#urlimportform"))$("#urlimportform").onsubmit=async e=>{e.preventDefault();const out=$("#urlimportresult");out.textContent="Fetching public webpage…";try{const d=await api("/api/knowledge/ingest-url",{method:"POST",body:JSON.stringify({url:$("#knowledgeurl").value.trim()})});out.textContent=JSON.stringify({ingested:d.ingested,url:d.url,chunks:d.chunks,characters:d.characters},null,2);note("Webpage imported into local memory");status()}catch(err){out.textContent=err.message;note("Website import failed")}};
 
 if($("#exportcorpus"))$("#exportcorpus").onclick=async()=>{const out=$("#exportcorpusresult");out.textContent="Exporting saved memories…";try{const d=await api("/api/knowledge/export-corpus",{method:"POST",body:"{}"});out.textContent=JSON.stringify(d,null,2);note("Training corpus updated")}catch(e){out.textContent=e.message;note("Export failed")}};
+
+async function loadEvaluations(q=""){
+ try{
+  const [summary,results]=await Promise.all([
+   api("/api/evaluations/summary"),
+   api("/api/evaluations?q="+encodeURIComponent(q)+"&limit=20")
+  ]);
+  $("#evalcount").textContent=summary.evaluations;
+  $("#evalaverage").textContent=summary.average_score==null?"—":Number(summary.average_score).toFixed(2);
+  $("#evalpositive").textContent=summary.positive_evaluations;
+  $("#evallist").innerHTML=results.items.map(x=>'<div class="item"><small>'+esc(new Date(x.created_at*1000).toLocaleString())+' · score '+esc(x.score)+'</small><b>'+esc(x.goal)+'</b><p>'+esc(x.outcome)+'</p><p>'+esc(x.feedback||"No additional feedback")+'</p><small>'+esc((x.tags||[]).join(", "))+'</small></div>').join("")||"No matching evaluations";
+ }catch(e){note(e.message)}
+}
+if($("#evalform"))$("#evalform").onsubmit=async e=>{
+ e.preventDefault();const out=$("#evalresult");out.textContent="Saving reviewed feedback…";
+ const body={goal:$("#evalgoal").value.trim(),score:Number($("#evalscore").value),outcome:$("#evaloutcome").value.trim(),feedback:$("#evalfeedback").value.trim(),plan_summary:$("#evalsummary").value.trim(),tags:$("#evaltags").value.split(",").map(x=>x.trim()).filter(Boolean).slice(0,20)};
+ try{const d=await api("/api/evaluations",{method:"POST",body:JSON.stringify(body)});out.textContent=JSON.stringify({saved:d.saved,training_performed:d.training_performed,execution_performed:d.execution_performed},null,2);$("#evalform").reset();$("#evalscore").value="0.8";note("Evaluation saved locally");loadEvaluations($("#evalquery").value||"")}catch(err){out.textContent=err.message;note("Evaluation save failed")}
+};
+if($("#evalsearchform"))$("#evalsearchform").onsubmit=e=>{e.preventDefault();loadEvaluations($("#evalquery").value.trim())};
+const priorGo=go;
+go=function(v){priorGo(v);if(v==="evaluation")loadEvaluations()};
