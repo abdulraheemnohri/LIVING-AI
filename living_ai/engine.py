@@ -2,11 +2,11 @@ import os
 from pathlib import Path
 from .db import get_settings
 from .memory import search_memories
-from .model import CharNGramModel
+from .model import CharNGramModel\nfrom .providers import remote_chat
 def respond(message):
     message=message.strip()
     if not message: raise ValueError("Message cannot be empty")
-    s=get_settings(); memories=search_memories(message,s.get("retrieval_limit",5))
+    s=get_settings(); memories=search_memories(message,s.get("retrieval_limit",5))\n    remote=remote_chat(message)\n    if remote: return {"answer":remote[:s["max_reply_chars"]],"backend":"optional-compatible-provider","memories_used":len(memories)}
     if memories:
         answer="Related local memory:\n"+"\n".join("- "+m["content"][:500] for m in memories)
         backend="local-memory-retrieval"
