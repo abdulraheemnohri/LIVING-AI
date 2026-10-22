@@ -98,3 +98,12 @@ not launch shell commands or rewrite source code.
 See [docs/AUTONOMY.md](docs/AUTONOMY.md). Run the tests with `python -m pytest`.
 This is a controlled foundation: it does not start a background daemon automatically, and unknown
 or non-reversible actions are held instead of executed.
+
+
+## Opt-in autonomy scheduler
+
+`living_ai.scheduler.AutonomyScheduler` adds explicit pause/resume, interval-based cycle gating,
+disable/enable controls, status reporting, and a per-run cycle budget. It never starts itself,
+creates a background thread, or bypasses the autonomy engine's action policy.
+
+See [docs/SCHEDULER.md](docs/SCHEDULER.md). Tests are in `tests/test_scheduler.py`.
