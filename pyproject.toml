@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "living-ai-evolution-engine"
+version = "0.1.0"
+description = "Local-first AI memory, small-model training, and reversible evolution engine"
+requires-python = ">=3.11"
+dependencies = ["litestar[standard]>=2.12,<3", "uvicorn>=0.30", "pydantic>=2.7"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[tool.setuptools]
+packages = ["living_ai"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
