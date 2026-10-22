@@ -152,8 +152,10 @@ def train_scratch(data:TrainScratch,request:Request) -> dict[str, Any]:
 @get("/api/model/status")
 async def model_status() -> dict[str, Any]:
     backend=os.getenv("LIVING_AI_MODEL_BACKEND","char_ngram").strip().lower()
-    if backend not in {"char_ngram","tiny_transformer","from_scratch","native_transformer"}: backend="char_ngram"
+    allowed={"char_ngram","tiny_transformer","from_scratch","native_transformer","litert_lm","hybrid"}
+    if backend not in allowed: backend="char_ngram"
     tiny_dir=Path(os.getenv("LIVING_AI_TINY_MODEL_DIR","models/tiny_transformer"))
+    litert_path=Path(os.getenv("LIVING_AI_LITERTLM_MODEL_PATH","models/litert/model.litertlm")).expanduser()
     try:
         import torch
         torch_available=True
@@ -161,13 +163,29 @@ async def model_status() -> dict[str, Any]:
     except ImportError:
         torch_available=False
         torch_version=None
+    try:
+        import litert_lm
+        litert_available=True
+    except ImportError:
+        litert_available=False
     tiny=backend in {"tiny_transformer","from_scratch","native_transformer"}
-    ready=(torch_available and (tiny_dir/"config.json").is_file() and (tiny_dir/"weights.pt").is_file()) if tiny else True
-    return {"backend":backend,"model_id":"living-ai-from-scratch" if tiny else None,
-            "device":os.getenv("LIVING_AI_TINY_DEVICE","cpu") if tiny else "cpu",
-            "dependencies":{"torch":torch_available,"torch_version":torch_version},
-            "tiny_checkpoint_exists":(tiny_dir/"weights.pt").is_file(),"ready":ready,
-            "remote_provider_enabled":os.getenv("LIVING_AI_ALLOW_REMOTE_PROVIDER","false").lower()=="true"}
+    litert_model_exists=litert_path.is_file()
+    if tiny:
+        ready=torch_available and (tiny_dir/"config.json").is_file() and (tiny_dir/"weights.pt").is_file()
+    elif backend=="litert_lm":
+        ready=litert_available and litert_model_exists
+    else:
+        ready=True
+    return {
+        "backend":backend,
+        "model_id":"living-ai-from-scratch" if tiny else (str(litert_path) if backend in {"litert_lm","hybrid"} else None),
+        "device":os.getenv("LIVING_AI_LITERTLM_BACKEND","cpu") if backend in {"litert_lm","hybrid"} else (os.getenv("LIVING_AI_TINY_DEVICE","cpu") if tiny else "cpu"),
+        "dependencies":{"torch":torch_available,"torch_version":torch_version,"litert_lm":litert_available},
+        "tiny_checkpoint_exists":(tiny_dir/"weights.pt").is_file(),
+        "litert_model_exists":litert_model_exists,
+        "ready":ready,
+        "remote_provider_enabled":os.getenv("LIVING_AI_ALLOW_REMOTE_PROVIDER","false").lower()=="true"
+    }
 
 init_db()
 app=Litestar(route_handlers=[index,health,status,chat,memories,add,remove,ingest,ingest_file,ingest_url,export_corpus,train,proposals,propose,eval_route,promote_route,rollback_route,audit,settings,train_scratch,model_status],static_files_config=[StaticFilesConfig(path="/static",directories=[str(ROOT/"static")])],debug=False)
