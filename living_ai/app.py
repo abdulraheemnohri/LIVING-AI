@@ -22,13 +22,13 @@ class Train(BaseModel): input_dir:str="data/corpus"
 class TrainScratch(BaseModel):
     input_dir:str="data/corpus"
     output_dir:str="models/tiny_transformer"
-    steps:int=Field(default=500,ge=1,le=100000)
-    batch_size:int=Field(default=4,ge=1,le=128)
+    steps:int=Field(default=500,ge=1,le=5000)
+    batch_size:int=Field(default=4,ge=1,le=8)
     learning_rate:float=Field(default=0.0003,ge=0.000001,le=0.1)
-    block_size:int=Field(default=64,ge=16,le=2048)
-    width:int=Field(default=64,ge=32,le=1024)
-    heads:int=Field(default=4,ge=1,le=16)
-    layers:int=Field(default=2,ge=1,le=12)
+    block_size:int=Field(default=64,ge=16,le=256)
+    width:int=Field(default=64,ge=32,le=256)
+    heads:int=Field(default=4,ge=1,le=8)
+    layers:int=Field(default=2,ge=1,le=4)
     seed:int=42
 @get("/")
 async def index():return File(path=ROOT/"static"/"index.html",media_type="text/html")
