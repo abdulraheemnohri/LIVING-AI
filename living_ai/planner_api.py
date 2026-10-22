@@ -13,7 +13,7 @@ from litestar.exceptions import HTTPException
 from pydantic import BaseModel, Field
 
 from .autonomous import AutonomyEngine
-from .coordinator import EvolutionCoordinator
+from .coordinator import EvolutionCoordinator, PreparedEvolution
 from .db import data_dir
 from .learning import LearningStore
 from .planner import GoalPlanner, Plan, PlanStep
@@ -145,10 +145,13 @@ def planner_submit(data: SubmitRequest, request: Request) -> dict[str, Any]:
                 rationale=str(step.get("rationale", ""))[:1000], requires_review=True,
             ))
         plan = Plan(plan_id=row["plan_id"], goal=row["goal"], steps=tuple(steps))
-        ids = _coordinator().submit_for_review(type("StoredPrepared", (), {
-            "plan": plan, "backend": row["backend"], "warning": row["warning"],
-            "prior_evaluations": tuple(json.loads(row["prior_json"])),
-        })())
+        prepared = PreparedEvolution(
+            plan=plan,
+            backend=row["backend"],
+            warning=row["warning"],
+            prior_evaluations=tuple(json.loads(row["prior_json"])),
+        )
+        ids = _coordinator().submit_for_review(prepared)
         db.execute("UPDATE prepared_plans SET status='submitted',submitted_at=? WHERE plan_id=?",
                    (time.time(), data.plan_id))
     return {"plan_id": data.plan_id, "goal_ids": ids, "queued_count": len(ids),
