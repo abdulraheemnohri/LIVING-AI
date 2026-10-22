@@ -14,6 +14,8 @@ def respond(message):
     settings = get_settings()
     memories = search_memories(message, settings.get("retrieval_limit", 5))
     backend = os.getenv("LIVING_AI_MODEL_BACKEND", "char_ngram").strip().lower()
+    if backend not in {"char_ngram", "tiny_transformer", "from_scratch", "native_transformer"}:
+        backend = "char_ngram"
     if backend in {"tiny_transformer", "from_scratch", "native_transformer"}:
         try:
             from .neural_lm import generate
