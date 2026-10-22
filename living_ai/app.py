@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any
 from litestar import Litestar,get,post,delete,Request
 from litestar.exceptions import HTTPException
-from litestar.response import HTMLResponse
+from litestar.response import Response
 from litestar.static_files import StaticFilesConfig
 from pydantic import BaseModel,Field
 from .db import init_db,connect,get_settings,data_dir
@@ -34,10 +34,10 @@ class TrainScratch(BaseModel):
     heads:int=Field(default=4,ge=1,le=8)
     layers:int=Field(default=2,ge=1,le=4)
     seed:int=42
-@get("/", sync_to_thread=True)
-async def index() -> HTMLResponse:
+@get("/")
+async def index() -> Response:
     html=(ROOT/"static"/"index.html").read_text(encoding="utf-8")
-    return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
+    return Response(content=html, media_type="text/html; charset=utf-8", headers={"Content-Disposition": "inline"})
 @get("/api/health")
 async def health() -> dict[str, Any]:return {"ok":True,"name":"LIVING AI","version":"0.4.0"}
 @get("/api/status")
