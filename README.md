@@ -24,6 +24,8 @@ Install a compatible PyTorch build and run:
     mkdir -p data/corpus
     python -m living_ai.train_neural --input data/corpus --steps 300 --batch-size 2 --width 64 --heads 4 --layers 2 --block-size 64
 
+Or run the low-resource helper: `bash scripts/train_from_scratch_android.sh`.
+
 Put lawful UTF-8 .txt or .md files in data/corpus first. This creates a tiny byte-level causal Transformer with random initial weights. It can encode Urdu and other Unicode scripts, but byte-level learning is inefficient and a small dataset will usually produce weak, repetitive text. Training can be slow and heat a phone. Start with width 32–64, two layers, block size 32–64, and a few hundred steps. PyTorch wheels may not be available for every Android Debian architecture.
 
 To serve the trained checkpoint, set LIVING_AI_MODEL_BACKEND=tiny_transformer and LIVING_AI_TINY_MODEL_DIR=models/tiny_transformer in .env, then restart. The dashboard Training page also includes the from-scratch trainer.
