@@ -22,7 +22,7 @@ Open http://127.0.0.1:8000 in a browser. The server binds to localhost by defaul
 - **Model B — LiteRT-LM-compatible language model:** Model B is the model intended to be trained or fine-tuned. Important: LiteRT-LM is an inference runtime, not a training framework. Train/fine-tune the source model with a compatible external training stack, evaluate it, then convert/export it to a supported `.litertlm` artifact for local inference.
 - **Hybrid mode:** tries the converted Model B through LiteRT-LM first, then falls back to saved local memory or Model A if Model B is unavailable or fails.
 
-**Implementation status:** the current repository has LiteRT-LM inference integration and existing local training code, but does not yet contain a Model B training/fine-tuning-and-conversion pipeline. The current Training Lab trains the character n-gram baseline, and the optional tiny Transformer trainer is a separate existing feature; these have not yet been replaced with Model B training. Imported SQLite memory is not automatically training data.
+**Implementation status:** the repository has LiteRT-LM inference integration and existing local training code, but does not yet contain a Model B training/fine-tuning-and-conversion pipeline. The end-to-end runtime API, model generation and tests must be validated in the target environment; see [the A-to-Z audit](docs/PROJECT_A_TO_Z.md). The current Training Lab trains the character n-gram baseline, and the optional tiny Transformer trainer is a separate existing feature; these have not yet been replaced with Model B training. Imported SQLite memory is not automatically training data.
 
 ## Model B: Gemma 4 E2B Instruct (LiteRT-LM)
 
@@ -119,7 +119,7 @@ python -m pip install -e '.[dev]'
 python -m pytest
 ```
 
-See `docs/ARCHITECTURE.md` and `docs/ANDROID_DEBIAN.md`.
+See `docs/ARCHITECTURE.md`, `docs/ANDROID_DEBIAN.md`, and the full [A-to-Z project audit and release checklist](docs/PROJECT_A_TO_Z.md).
 
 ## Current limitations
 
