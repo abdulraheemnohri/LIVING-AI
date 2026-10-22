@@ -2,34 +2,69 @@
 
 Last reviewed: 2026-10-23
 
-This document separates confirmed repository design from features that still need implementation or runtime validation. Reading source or seeing a GitHub commit does not prove that dependencies install, tests pass, or inference works on a phone.
+This document distinguishes existing features from the intended architecture and features that still need implementation or runtime validation.
 
 ## 1. Project purpose
 
-LIVING-AI is a local-first assistant workbench targeting Debian/Linux terminal environments on Android. Its current foundations include a Litestar API, browser dashboard, SQLite memory, text import, lightweight local model options, optional LiteRT-LM inference, and reversible settings evolution.
+LIVING-AI is a local-first assistant workbench for Android Debian/Linux terminal environments. It combines a dashboard/API, local memory, trainable lightweight Model A, and a stronger optional Model B that can assist with preparing, reviewing and improving Model A's training data and training workflow.
 
-It is not a claim of consciousness or unrestricted autonomy. The default safety design should remain review-first and bounded.
+The system is not a claim of consciousness or unrestricted autonomy. Model B must not silently alter code or model files; training jobs use explicit datasets, budgets, evaluation gates, checkpoints and rollback.
 
-## 2. Model architecture and responsibilities
+## 2. Correct two-model design
 
-| Component | Intended role | Current state |
-|---|---|---|
-| Model A: character n-gram | Lightweight fallback/baseline; not the requested training target | Existing trainer/inference code is present |
-| Model B: Gemma 4 E2B Instruct LiteRT-LM | Primary local language model inference | Adapter/configuration exists; actual runtime compatibility and generation need a smoke test |
-| Model B training | Fine-tune/train a compatible source model, evaluate it, export/convert to LiteRT-LM | **Not implemented** |
-| Tiny byte-level Transformer | Separate educational model trained from random initialization | Existing optional trainer; not Gemma and not Model B |
-| SQLite memory | Save and retrieve notes/imported chunks | Existing feature; not equivalent to model-weight training |
-| Remote OpenAI-compatible endpoint | Optional remote fallback/provider | Opt-in; prompt data leaves device when enabled |
+### Model A — trainable local model
 
-### Model B artifact
+Model A is the smaller, locally maintained model. It is the **training target** and may be updated from several selectable sources and methods:
 
-- Hugging Face repository: [litert-community/gemma-4-E2B-it-litert-lm](https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm)
-- Expected file: `gemma-4-E2B-it.litertlm`
-- Expected local path: `models/litert/gemma-4-E2B-it.litertlm`
-- File size is about 2.6 GB; memory varies by device and backend. A 6 GB phone may experience pressure.
-- LiteRT-LM is an inference runtime. Do not promise training/fine-tuning directly through LiteRT-LM.
+1. **Manual upload:** user uploads supported TXT, Markdown, JSON, and (when a parser is implemented) CSV/JSONL datasets.
+2. **Manual corpus folder:** user copies files into a configured training folder and starts a training job.
+3. **Saved local memory:** user explicitly selects reviewed memories and exports them into a training corpus.
+4. **Curated web knowledge:** user explicitly imports public pages or datasets, reviews provenance, then selects content for training.
+5. **Model B-assisted dataset preparation:** Model B may classify, summarize, deduplicate, structure, label, generate examples, identify gaps, and propose corrections to the training dataset.
+6. **Model B-generated synthetic examples:** optional and clearly marked as synthetic; require quality checks and preferably human review before inclusion.
+7. **Evaluation-driven iteration:** failed evaluation cases can be converted into candidate training examples; they are not automatically accepted without configured review/gates.
 
-## 3. Installation and first run
+Model A's existing character n-gram trainer is a lightweight baseline. It can learn character sequence statistics but does not perform instruction-following fine-tuning. If Model A is intended to become a capable instruction/chat model, its target architecture and trainer must support that objective. The existing optional tiny byte-level Transformer is separate and is not the same as the n-gram model.
+
+### Model B — teacher/coach, not the training target
+
+Model B is `litert-community/gemma-4-E2B-it-litert-lm`, served through LiteRT-LM for inference. It does **not** train or fine-tune itself in this architecture. It can assist the user and the training pipeline by:
+
+- preparing and normalizing datasets;
+- generating candidate instruction/response pairs or labels;
+- checking examples for ambiguity, duplicates, formatting errors and contradictions;
+- proposing improvements to Model A's training configuration;
+- generating evaluation questions and expected-answer rubrics;
+- explaining evaluation failures and suggesting candidate examples;
+- helping prepare a training manifest and report.
+
+Model B's output is untrusted candidate data. Validate structure, enforce size/resource limits, label synthetic content, prevent secrets/personal data leakage, and require human approval where appropriate. Do not let Model B execute shell commands, install packages, overwrite source code, or directly promote a checkpoint.
+
+### Critical implementation status
+
+The **teacher-assisted Model B → Model A pipeline is the intended architecture, but is not yet implemented end-to-end**. Current n-gram training exists; current memory import is not itself model training. LiteRT-LM is an inference runtime. It can generate assistance for Model A's dataset/training process, but does not provide Model B fine-tuning.
+
+## 3. Runtime and storage
+
+- Dashboard: `static/index.html`.
+- API: `living_ai/app.py`.
+- Routing: `living_ai/engine.py`.
+- Model B inference adapter: `living_ai/litert_lm_backend.py`.
+- Model A n-gram: `living_ai/model.py` and `living_ai/training.py`.
+- Optional separate tiny Transformer: `living_ai/neural_lm.py` and `living_ai/neural_training.py`.
+- Memory: SQLite modules under `living_ai/`.
+- Model B expected artifact: `models/litert/gemma-4-E2B-it.litertlm`.
+- Model A n-gram checkpoint: `models/char_ngram.json`.
+- Training data should be stored in a configurable corpus directory and never committed by default.
+
+## 4. Model B artifact and mobile resources
+
+- Model card: [litert-community/gemma-4-E2B-it-litert-lm](https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm)
+- Expected artifact: `gemma-4-E2B-it.litertlm`, approximately 2.6 GB.
+- A 6 GB Android device may face memory pressure. Run CPU-first and measure actual peak memory.
+- The app must support clear states for missing model, missing optional dependency, model-load error, timeout, and fallback.
+
+## 5. Installation
 
 ```bash
 git clone https://github.com/abdulraheemnohri/LIVING-AI.git
@@ -39,113 +74,89 @@ source .venv/bin/activate
 bash scripts/run.sh
 ```
 
-Open `http://127.0.0.1:8000`. Python 3.11+ is specified by project metadata. Check the install script and target architecture before assuming every optional package is available.
-
-To install LiteRT-LM integration:
+Install optional LiteRT-LM support with:
 
 ```bash
 python -m pip install -e '.[litert]'
 mkdir -p models/litert
 ```
 
-Download the model artifact separately or set `LIVING_AI_LITERTLM_MODEL_PATH` to the exact local file. The app does not automatically download 2.6 GB model files.
+Download the official model artifact separately into the configured path. The application must not silently download a multi-gigabyte model.
 
-## 4. Configuration
+## 6. Model A training workflow — intended end state
 
-| Variable | Purpose | Safe default |
-|---|---|---|
-| `LIVING_AI_HOST` | Server bind address | `127.0.0.1` |
-| `LIVING_AI_PORT` | HTTP port | `8000` |
-| `LIVING_AI_DATA_DIR` | SQLite/data/corpus directory | `./data` |
-| `LIVING_AI_ADMIN_TOKEN` | Bearer token for guarded mutations | Set a strong value before network exposure |
-| `LIVING_AI_MODEL_BACKEND` | `hybrid`, `litert_lm`, `char_ngram`, tiny-transformer aliases | `hybrid` in the example |
-| `LIVING_AI_MODEL_PATH` | Character n-gram checkpoint | `models/char_ngram.json` |
-| `LIVING_AI_LITERTLM_MODEL_PATH` | Local Gemma LiteRT-LM file | `models/litert/gemma-4-E2B-it.litertlm` |
-| `LIVING_AI_LITERTLM_BACKEND` | LiteRT runtime backend | `cpu` |
-| `LIVING_AI_ALLOW_REMOTE_PROVIDER` | Allow remote inference | `false` |
-| `LIVING_AI_AUTO_PROMOTE` | Evolution auto-promotion flag | `false` |
+1. Select a training source (upload, corpus folder, selected memories, reviewed web imports, or Model B-assisted examples).
+2. Parse files with format and size limits; reject malformed inputs.
+3. Show a dataset preview, source/provenance, document count, duplicate count, and sensitive-data warnings.
+4. Let the user include/exclude records and optionally ask Model B to prepare or label candidates.
+5. Save a versioned, immutable training manifest with hashes and source references.
+6. Run a bounded training job with a configurable step/time/memory budget.
+7. Save a new checkpoint to a temporary versioned path, never overwrite the current best model in place.
+8. Evaluate before/after on a fixed regression set and user-defined examples.
+9. Compare quality, regressions, runtime and size. A Model B-generated score alone is not proof of correctness.
+10. Require user approval to promote the candidate checkpoint; keep rollback to the previous version.
+11. Record audit details: dataset version, method, parameters, model version, metrics, start/end time, status and errors.
 
-Copy `.env.example` to `.env`; do not commit secrets. Review the exact behavior of every environment variable against the source before relying on it.
+For a character n-gram model, training updates statistical counts and cannot directly learn semantic instruction-following the way a fine-tuned neural language model can. Model B may still improve the text corpus and candidate examples, but the capability of Model A is bounded by its architecture.
 
-## 5. Main feature inventory
+## 7. Configuration inventory
 
-- Dashboard and Litestar API.
-- Health/status and model-status endpoints.
-- Chat routing across selected local/optional remote backends.
-- SQLite memory creation, search and deletion.
-- TXT/Markdown/JSON import and user-triggered public text-page import.
-- Explicit export of saved memory to a corpus for human review.
-- Character n-gram training.
-- Optional from-scratch tiny Transformer training/inference.
-- Settings proposals, evaluation, snapshots, promotion and rollback.
-- Optional autonomy/planner/learning/evaluation modules across staged branches/PRs. Confirm branch/merge status and UI/API wiring before treating them as shipped features.
-- Documentation and shell scripts for installation and training.
+- `LIVING_AI_MODEL_BACKEND`: selected response backend.
+- `LIVING_AI_MODEL_PATH`: Model A n-gram checkpoint.
+- `LIVING_AI_LITERTLM_MODEL_PATH`: Model B artifact.
+- `LIVING_AI_LITERTLM_BACKEND`: runtime backend, start with CPU.
+- `LIVING_AI_DATA_DIR`: local SQLite/data directory.
+- `LIVING_AI_ADMIN_TOKEN`: token for guarded mutations; set before network exposure.
+- `LIVING_AI_ALLOW_REMOTE_PROVIDER`: remote provider opt-in, false by default.
+- `LIVING_AI_AUTO_PROMOTE`: promotion flag, false by default.
 
-## 6. Important boundaries
+Any additional dataset, teacher-assist or training-job settings should be added to the real settings schema and UI before being documented as active configuration.
 
-- Memory import does not update model weights.
-- Corpus export only prepares text; review provenance, rights, quality and sensitive data before training.
-- Existing n-gram and tiny Transformer training do not train Gemma.
-- Webpage import is not a continuous crawler or a fully isolated browser.
-- LiteRT model-file presence does not prove the installed Python API is compatible or that enough RAM is available.
-- Remote provider use transmits prompts to the configured endpoint.
-- No arbitrary shell execution, source-code self-rewrite or autonomous package installation should be enabled by this project.
-- A proposed or evaluated change is not automatically a safe promotion; keep rollback and human review.
+## 8. Security and safety
 
-## 7. A-to-Z validation checklist
+- Model B suggestions are candidate data, not trusted policy or code.
+- Uploaded files and imported pages are untrusted content and must never execute.
+- Training must be explicit; importing or saving memory must not automatically change model weights.
+- Avoid training on secrets, private user data or unlicensed material.
+- Apply dataset size/format limits and resource budgets.
+- Use versioned checkpoints, fixed evaluations, audit history and rollback.
+- Model B must not directly overwrite Model A's active checkpoint or promote its own suggestions.
+- Keep remote inference off unless explicitly approved; prompts sent to a remote provider leave the device.
+- No arbitrary shell execution, autonomous package installation or source-code self-rewriting.
 
-### Repository and packaging
-- [ ] Install the base package in a clean Python 3.11+ environment.
-- [ ] Install the development extra and run tests.
-- [ ] Run Ruff/lint and compile checks.
-- [ ] Confirm all README links point to existing files.
-- [ ] Confirm shell scripts use safe paths, fail on errors and are executable.
-- [ ] Confirm optional dependencies do not break the base install.
+## 9. A-to-Z validation checklist
 
-### API and dashboard
-- [ ] Start server and check `GET /api/health`, `GET /api/status`, `GET /api/model/status`.
-- [ ] Exercise chat with each configured backend.
-- [ ] Verify each mutation route's authentication behavior with and without an admin token.
-- [ ] Test file type/size limits, malformed JSON, empty content and oversized inputs.
-- [ ] Test webpage URL validation, redirects, non-public IP rejection and timeout handling.
-- [ ] Check every dashboard navigation page and browser console errors.
-- [ ] Confirm UI handles missing model, missing optional dependency and API error responses.
+### Packaging and UI/API
+- [ ] Clean Python 3.11+ install and optional-dependency install.
+- [ ] Run tests, compile checks and lint.
+- [ ] Test all dashboard pages, API routes, authentication and error states.
+- [ ] Verify import limits, malformed files, URL restrictions, memory persistence and deletion.
+- [ ] Verify no secrets, private corpora or model artifacts are committed.
 
-### Model A and Model B
-- [ ] Train and load the n-gram checkpoint using a small fixture corpus.
-- [ ] Confirm hybrid mode attempts Model B first and falls back on missing dependency, missing file and generation errors.
-- [ ] Verify the installed LiteRT-LM Python API matches `living_ai/litert_lm_backend.py`.
-- [ ] Run a real generation smoke test with the Gemma 4 E2B artifact.
-- [ ] Verify `max_new_tokens` is actually enforced by the adapter/runtime.
-- [ ] Measure peak memory, latency and stability on target Android Debian hardware.
-- [ ] Verify strict `litert_lm` mode returns a clear error when unavailable.
-- [ ] Do not claim Model B training until a source-model training/fine-tuning, evaluation and conversion pipeline is implemented and tested.
+### Model B
+- [ ] Verify installed LiteRT-LM API compatibility with the adapter.
+- [ ] Load Gemma artifact and generate a real response.
+- [ ] Verify output token limits, timeout and clear failure states.
+- [ ] Measure latency and peak RAM on the target Android device.
+- [ ] Confirm Model B is only used for inference/teacher assistance, not claimed to be self-trained.
 
-### Memory, data and safety
-- [ ] Test SQLite initialization, persistence, search, deletion and export.
-- [ ] Verify imported content remains inert data.
-- [ ] Review exported corpora for personal data and licensing before training.
-- [ ] Test settings proposal, evaluation, promotion, snapshot and rollback.
-- [ ] Verify no secrets or model artifacts are tracked by Git.
-- [ ] Keep remote inference off unless explicitly approved.
+### Model A and teacher-assisted training
+- [ ] Test manual file upload and folder-based dataset ingestion.
+- [ ] Test selected-memory export and reviewed web-import selection.
+- [ ] Add format validation, preview, deduplication, provenance and privacy warnings.
+- [ ] Add a Model B dataset-preparation/labeling interface with synthetic-data labels.
+- [ ] Add training-job records, cancellation/resource budgets and versioned checkpoints.
+- [ ] Add before/after evaluation, regression checks, human promotion and rollback.
+- [ ] Test Model B unavailable: manual Model A training must still work.
+- [ ] Test malformed/adversarial teacher output is rejected or safely treated as data.
+- [ ] Confirm memory import alone never starts training.
 
-### Autonomy/evolution
-- [ ] Confirm staged PRs are merged in the documented order before testing dependent modules.
-- [ ] Confirm no worker/scheduler starts automatically.
-- [ ] Verify unknown and non-reversible actions remain held/blocked.
-- [ ] Verify approval is separate from execution.
-- [ ] Test cycle budgets, pause/resume, audit persistence and failure paths.
-- [ ] Regression gates only qualify for review; they must not silently deploy code or replace model weights.
+### Autonomy and evolution
+- [ ] Verify staged PR dependencies and merge state before assuming features are on main.
+- [ ] Ensure worker/scheduler is not started unexpectedly.
+- [ ] Unknown/non-reversible actions remain blocked or held for approval.
+- [ ] Approval is separate from execution; evaluation success is not automatic promotion.
 
-## 8. Known gaps at this review
+## 10. Release criteria and known gaps
 
-1. The Model B training/fine-tuning → evaluation → LiteRT-LM export pipeline is absent.
-2. LiteRT-LM adapter API compatibility and real model generation have not been verified in this review environment.
-3. The full test suite, lint checks, Android install and live inference were not executed as part of this documentation pass.
-4. Staged autonomy/evaluation PRs may not be present on the default branch; review PR state and merge dependencies separately.
-5. A model status file/dependency check is only a diagnostic, not an inference readiness guarantee.
-6. Legacy training UI still refers to n-gram/tiny Transformer; keep it clearly labelled as not Model B training until the workflow is replaced.
-
-## 9. Release criteria
-
-Do not call the project “fully tested” until CI passes on the default branch and the target Debian environment has a successful install, API tests, UI smoke test, LiteRT-LM model generation test, hybrid fallback test, and a documented resource measurement. Keep the Model B trainer marked pending until that end-to-end workflow exists.
+The main outstanding work is the actual Model B-assisted Model A training workflow: multi-source dataset selection, dataset preview/versioning, teacher assistance, bounded training jobs, evaluation, checkpoint promotion and rollback. The LiteRT-LM adapter and real generation also need runtime validation. Do not label the project fully tested until the test suite, UI/API smoke tests and target-device model generation have passed.
