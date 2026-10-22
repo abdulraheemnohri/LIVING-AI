@@ -11,71 +11,42 @@ def respond(message):
     message = message.strip()
     if not message:
         raise ValueError("Message cannot be empty")
-
     settings = get_settings()
     memories = search_memories(message, settings.get("retrieval_limit", 5))
     backend = os.getenv("LIVING_AI_MODEL_BACKEND", "char_ngram").strip().lower()
-
+    if backend in {"tiny_transformer", "from_scratch", "native_transformer"}:
+        try:
+            from .neural_lm import generate
+            context = ""
+            if memories:
+                context = "Relevant saved notes:\n" + "\n".join("- " + item["content"][:400] for item in memories) + "\n\n"
+            answer = generate(context + message, model_dir=os.getenv("LIVING_AI_TINY_MODEL_DIR", "models/tiny_transformer"), max_new_tokens=min(512, max(32, settings["max_reply_chars"] // 3)), temperature=settings["temperature"], device=os.getenv("LIVING_AI_TINY_DEVICE", "cpu"))
+            return {"answer": answer[:settings["max_reply_chars"]], "backend": "from-scratch-tiny-transformer", "model": os.getenv("LIVING_AI_TINY_MODEL_DIR", "models/tiny_transformer"), "memories_used": len(memories)}
+        except (RuntimeError, OSError, ValueError) as exc:
+            return {"answer": f"From-scratch model could not load or generate: {exc}", "backend": "from-scratch-model-error", "memories_used": len(memories)}
     if backend in {"transformers", "smollm3", "huggingface"}:
         try:
             from .hf_model import generate
             context = ""
             if memories:
-                context = "Relevant saved notes:\n" + "\n".join(
-                    "- " + item["content"][:500] for item in memories
-                ) + "\n\n"
-            answer = generate(
-                context + message,
-                max_new_tokens=min(512, max(32, settings["max_reply_chars"] // 3)),
-                temperature=settings["temperature"],
-            )
-            return {
-                "answer": answer[:settings["max_reply_chars"]],
-                "backend": "huggingface-transformers",
-                "model": os.getenv("LIVING_AI_HF_MODEL_ID", "HuggingFaceTB/SmolLM3-3B-Base"),
-                "memories_used": len(memories),
-            }
+                context = "Relevant saved notes:\n" + "\n".join("- " + item["content"][:500] for item in memories) + "\n\n"
+            answer = generate(context + message, max_new_tokens=min(512, max(32, settings["max_reply_chars"] // 3)), temperature=settings["temperature"])
+            return {"answer": answer[:settings["max_reply_chars"]], "backend": "huggingface-transformers", "model": os.getenv("LIVING_AI_HF_MODEL_ID", "HuggingFaceTB/SmolLM3-3B-Base"), "memories_used": len(memories)}
         except (RuntimeError, OSError, ValueError) as exc:
-            return {
-                "answer": f"Local Transformers model could not load or generate: {exc}",
-                "backend": "huggingface-transformers-error",
-                "model": os.getenv("LIVING_AI_HF_MODEL_ID", "HuggingFaceTB/SmolLM3-3B-Base"),
-                "memories_used": len(memories),
-            }
-
+            return {"answer": f"Local Transformers model could not load or generate: {exc}", "backend": "huggingface-transformers-error", "model": os.getenv("LIVING_AI_HF_MODEL_ID", "HuggingFaceTB/SmolLM3-3B-Base"), "memories_used": len(memories)}
     remote = remote_chat(message)
     if remote:
-        return {
-            "answer": remote[:settings["max_reply_chars"]],
-            "backend": "optional-compatible-provider",
-            "memories_used": len(memories),
-        }
-
+        return {"answer": remote[:settings["max_reply_chars"]], "backend": "optional-compatible-provider", "memories_used": len(memories)}
     if memories:
-        answer = "Related local memory:\n" + "\n".join(
-            "- " + item["content"][:500] for item in memories
-        )
+        answer = "Related local memory:\n" + "\n".join("- " + item["content"][:500] for item in memories)
         selected_backend = "local-memory-retrieval"
     else:
         path = Path(os.getenv("LIVING_AI_MODEL_PATH", "models/char_ngram.json"))
         if path.exists():
             model = CharNGramModel.load(path)
-            answer = model.generate(
-                message + "\n",
-                min(settings["max_reply_chars"], 800),
-                settings["temperature"],
-            )
+            answer = model.generate(message + "\n", min(settings["max_reply_chars"], 800), settings["temperature"])
             selected_backend = "original-char-ngram"
         else:
-            answer = (
-                "I am LIVING AI in local starter mode. Save knowledge or train the "
-                "original small character n-gram model. Set LIVING_AI_MODEL_BACKEND="
-                "transformers to use SmolLM3-3B-Base if its optional dependencies and "
-                "hardware requirements are available."
-            )
+            answer = "I am LIVING AI in local starter mode. Train the character n-gram baseline, or train the from-scratch Transformer with python -m living_ai.train_neural. Set LIVING_AI_MODEL_BACKEND=tiny_transformer to use its checkpoint. SmolLM3 is a separate optional pretrained backend."
             selected_backend = "native-local"
-    return {
-        "answer": answer[:settings["max_reply_chars"]],
-        "backend": selected_backend,
-        "memories_used": len(memories),
-    }
+    return {"answer": answer[:settings["max_reply_chars"]], "backend": selected_backend, "memories_used": len(memories)}
