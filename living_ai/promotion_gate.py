@@ -26,6 +26,12 @@ DEFAULT_MIN_SCORE = 1.0
 def _connect():
     db = sqlite3.connect(data_dir() / "evaluation_runs.sqlite3", timeout=10)
     db.row_factory = sqlite3.Row
+    # Ensure an empty installation fails closed with an insufficient-history decision,
+    # rather than raising OperationalError before the Evaluation Lab has ever run.
+    db.execute("""CREATE TABLE IF NOT EXISTS evaluation_runs (
+        run_id TEXT PRIMARY KEY, created_at REAL NOT NULL, passed INTEGER NOT NULL,
+        total INTEGER NOT NULL, score REAL NOT NULL, results_json TEXT NOT NULL
+    )""")
     db.execute("""CREATE TABLE IF NOT EXISTS gate_decisions (
         decision_id TEXT PRIMARY KEY, created_at REAL NOT NULL,
         eligible INTEGER NOT NULL, window_size INTEGER NOT NULL,
