@@ -92,7 +92,7 @@ class EvaluationRequest(BaseModel):
 def planner_prepare(data: PrepareRequest, request: Request) -> dict[str, Any]:
     _require_admin(request)
     remote_allowed = data.allow_remote and os.getenv("LIVING_AI_ALLOW_REMOTE_PROVIDER", "false").lower() == "true"
-    result = get_coordinator().prepare(data.goal, allow_remote=remote_allowed, memory_limit=data.memory_limit)
+    result = getget_coordinator().prepare(data.goal, allow_remote=remote_allowed, memory_limit=data.memory_limit)
     plan_data = GoalPlanner.to_dict(result.plan)
     now = time.time()
     with _connect() as db:
@@ -159,7 +159,7 @@ def planner_submit(data: SubmitRequest, request: Request) -> dict[str, Any]:
             warning=row["warning"],
             prior_evaluations=tuple(json.loads(row["prior_json"])),
         )
-        ids = _coordinator().submit_for_review(prepared)
+        ids = get_coordinator().submit_for_review(prepared)
         db.execute("UPDATE prepared_plans SET status='submitted',submitted_at=? WHERE plan_id=?",
                    (time.time(), data.plan_id))
     return {"plan_id": data.plan_id, "goal_ids": ids, "queued_count": len(ids),
@@ -170,7 +170,7 @@ def planner_submit(data: SubmitRequest, request: Request) -> dict[str, Any]:
 def planner_record_evaluation(data: EvaluationRequest, request: Request) -> dict[str, Any]:
     _require_admin(request)
     try:
-        result = _coordinator().record_evaluation(
+        result = get_coordinator().record_evaluation(
             data.goal, score=data.score, outcome=data.outcome, feedback=data.feedback,
             plan_summary=data.plan_summary, tags=data.tags,
         )
@@ -182,4 +182,4 @@ def planner_record_evaluation(data: EvaluationRequest, request: Request) -> dict
 @get("/api/planner/learning-summary", sync_to_thread=True)
 def planner_learning_summary(request: Request) -> dict[str, Any]:
     _require_admin(request)
-    return _coordinator().learning_summary()
+    return get_coordinator().learning_summary()
