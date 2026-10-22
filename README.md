@@ -86,3 +86,15 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/ANDROID_DEBIAN.md](do
 
 
 **Pretrained model removal:** The SmolLM3-3B-Base / Hugging Face Transformers backend has been removed. The default install does not include Transformers.
+
+
+## Bounded autonomy engine
+
+The optional `living_ai.autonomous.AutonomyEngine` adds a persistent goal queue, bounded
+execution cycles, a registered-action policy, reversible-action auto-run, approval holding,
+saved notes, and an auditable run history. It uses only the Python standard library and does
+not launch shell commands or rewrite source code.
+
+See [docs/AUTONOMY.md](docs/AUTONOMY.md). Run the tests with `python -m pytest`.
+This is a controlled foundation: it does not start a background daemon automatically, and unknown
+or non-reversible actions are held instead of executed.
