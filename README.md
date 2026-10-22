@@ -142,3 +142,8 @@ engine's registered-action policy remains the execution gate.
 
 See [docs/EVOLUTION_LOOP.md](docs/EVOLUTION_LOOP.md). Tests are in
 `tests/test_coordinator.py`.
+
+
+## Evaluation Lab (local feedback)
+
+The mobile-first Evaluation Lab lets you record explicit human scores, outcomes, feedback and tags, then search prior evaluations and review summary statistics. It uses the existing local SQLite learning store; it does not independently judge success, run tasks, or train weights. All evaluation API routes fail closed unless `LIVING_AI_ADMIN_TOKEN` is configured. See [docs/EVALUATION_LAB.md](docs/EVALUATION_LAB.md).
