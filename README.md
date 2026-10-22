@@ -1,8 +1,8 @@
 # LIVING-AI — Evolution Engine
 
-A local-first AI workbench for Android Debian/Linux terminal environments. It combines persistent SQLite memory, a character n-gram baseline, an original tiny byte-level Transformer trained from random initialization, mobile file and public webpage knowledge import, an optional OpenAI-compatible endpoint, and reversible settings evolution.
+A local-first AI workbench for Android Debian/Linux terminal environments. It combines persistent SQLite memory, a character n-gram baseline, an original tiny byte-level Transformer trained from random initialization, optional LiteRT-LM inference, mobile file and public webpage knowledge import, an optional OpenAI-compatible endpoint, and reversible settings evolution.
 
-> This is an evolving engineering project, not a claim of consciousness or frontier-level intelligence. The built-in n-gram model remains the lightweight default.
+> This is an evolving engineering project, not a claim of consciousness or frontier-level intelligence. The n-gram model is a lightweight fallback; LiteRT-LM requires a compatible pre-converted `.litertlm` model.
 
 ## Quick start (Debian/Linux on Android)
 
@@ -15,6 +15,49 @@ bash scripts/run.sh
 ```
 
 Open http://127.0.0.1:8000 in a browser. The server binds to localhost by default.
+
+## Hybrid architecture: Model B is the trainable model; Model A is the fallback
+
+- **Model A — Character n-gram:** fallback/inference baseline only in the intended two-model workflow. It is not the target of the Model B training pipeline.
+- **Model B — LiteRT-LM-compatible language model:** Model B is the model intended to be trained or fine-tuned. Important: LiteRT-LM is an inference runtime, not a training framework. Train/fine-tune the source model with a compatible external training stack, evaluate it, then convert/export it to a supported `.litertlm` artifact for local inference.
+- **Hybrid mode:** tries the converted Model B through LiteRT-LM first, then falls back to saved local memory or Model A if Model B is unavailable or fails.
+
+**Implementation status:** the repository has LiteRT-LM inference integration and existing local training code, but does not yet contain a Model B training/fine-tuning-and-conversion pipeline. The end-to-end runtime API, model generation and tests must be validated in the target environment; see [the A-to-Z audit](docs/PROJECT_A_TO_Z.md). The current Training Lab trains the character n-gram baseline, and the optional tiny Transformer trainer is a separate existing feature; these have not yet been replaced with Model B training. Imported SQLite memory is not automatically training data.
+
+## Model B: Gemma 4 E2B Instruct (LiteRT-LM)
+
+Use the published `litert-community/gemma-4-E2B-it-litert-lm` model as Model B. Its model file is `gemma-4-E2B-it.litertlm`, already packaged for LiteRT-LM inference; the repository's adapter expects it at `models/litert/gemma-4-E2B-it.litertlm`.
+
+Install the official runtime package and prepare the model directory:
+
+```bash
+python -m pip install -e '.[litert]'
+mkdir -p models/litert
+```
+
+Download the model file from the [Hugging Face model repository](https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm) into that directory, or try the official CLI directly:
+
+```bash
+pip install -U litert-lm
+litert-lm run --from-huggingface-repo=litert-community/gemma-4-E2B-it-litert-lm gemma-4-E2B-it.litertlm --prompt="Hello"
+```
+
+The CLI command tests Model B independently; the LIVING AI app uses the local path configured in `.env`. Set `LIVING_AI_LITERTLM_MODEL_PATH` if you save it elsewhere. The model file is about 2.6 GB, and the model card reports roughly 1.7 GB CPU memory on a tested Android flagship; a 6 GB phone may still face memory pressure depending on Android/Linux overhead. Start with CPU mode. GPU requires compatible runtime and hardware.
+
+Set these values in your `.env` file:
+
+```dotenv
+LIVING_AI_MODEL_BACKEND=hybrid
+LIVING_AI_LITERTLM_MODEL_PATH=models/litert/gemma-4-E2B-it.litertlm
+LIVING_AI_LITERTLM_BACKEND=cpu
+LIVING_AI_MODEL_PATH=models/char_ngram.json
+```
+
+Supported `LIVING_AI_MODEL_BACKEND` values are `hybrid`, `litert_lm`, `char_ngram`, and the existing `tiny_transformer` backend aliases. In strict `litert_lm` mode, a load/generation error is reported. In `hybrid` mode, the app records a fallback response and reason in the chat API result. The app does not download a model automatically; download the Gemma 4 E2B LiteRT-LM file separately as described above.
+
+Official LiteRT-LM docs:
+- Python API: https://developers.google.com/edge/litert-lm/python
+- CLI and model running: https://developers.google.com/edge/litert-lm/cli/usage
 
 ## Train a small language model from scratch
 
@@ -43,20 +86,21 @@ Imported knowledge is searchable memory; it does not automatically train the mod
 - Litestar API and responsive dashboard
 - SQLite-backed persistent memory and lexical retrieval
 - Original character n-gram baseline and from-scratch byte-level Transformer trained from local UTF-8 text
+- Model A character n-gram fallback; Model B LiteRT-LM inference adapter (Model B training pipeline still pending)
 - Mobile file import for TXT, Markdown and JSON plus explicit public webpage import
 - Optional OpenAI-compatible chat-completions provider (opt-in)
 - Allowlisted settings evolution with evaluation, snapshots, audit trail, and rollback
 - Local installation scripts and unit tests
 
-## Train the original baseline
+## Current training commands (legacy; not yet the Model B pipeline)
 
-Place permitted plain-text files in `data/corpus/`, then use **Training Lab → Train model now**, or run:
+The existing command below trains the character n-gram baseline. It is not a Model B trainer. Do not treat it as the requested Model B training workflow:
 
 ```bash
 python -m living_ai.train --input data/corpus --output models/char_ngram.json
 ```
 
-This trains the small character n-gram baseline. The from-scratch Transformer has a separate training command; no pretrained model is included.
+This command only trains the existing character n-gram baseline. The Model B training/fine-tuning, evaluation, and conversion pipeline remains to be implemented.
 
 ## Optional remote provider
 
@@ -75,42 +119,44 @@ python -m pip install -e '.[dev]'
 python -m pytest
 ```
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/ANDROID_DEBIAN.md](docs/ANDROID_DEBIAN.md).
+See `docs/ARCHITECTURE.md`, `docs/ANDROID_DEBIAN.md`, and the full [A-to-Z project audit and release checklist](docs/PROJECT_A_TO_Z.md).
 
 ## Current limitations
 
 - The tiny from-scratch model is educational, not assistant-grade; training may be slow and PyTorch wheel support depends on architecture.
+- LiteRT-LM uses the external Gemma 4 E2B Instruct `.litertlm` model and installed runtime; the model is about 2.6 GB on disk and memory needs may exceed what a phone can spare.
 - No unattended crawler, PDF/YouTube ingestion, transformer fine-tuning, automatic online training, or autonomous source-code self-update is implemented; web import is user-initiated.
 - App source-code self-updates and arbitrary code execution are intentionally excluded.
 - Android CPU, RAM, storage, and thermal limits constrain inference and training.
 
-
 **Pretrained model removal:** The SmolLM3-3B-Base / Hugging Face Transformers backend has been removed. The default install does not include Transformers.
-
 
 ## Bounded autonomy engine
 
-The optional `living_ai.autonomous.AutonomyEngine` adds a persistent goal queue, bounded
-execution cycles, a registered-action policy, reversible-action auto-run, approval holding,
-saved notes, and an auditable run history. It uses only the Python standard library and does
-not launch shell commands or rewrite source code.
+The optional `living_ai.autonomous.AutonomyEngine` adds a persistent goal queue, bounded execution cycles, a registered-action policy, reversible-action auto-run, approval holding, saved notes, and an auditable run history. It uses only the Python standard library and does not launch shell commands or rewrite source code.
 
-See [docs/AUTONOMY.md](docs/AUTONOMY.md). Run the tests with `python -m pytest`.
-This is a controlled foundation: it does not start a background daemon automatically, and unknown
-or non-reversible actions are held instead of executed.
-
+See [docs/AUTONOMY.md](docs/AUTONOMY.md). Run the tests with `python -m pytest`. This is a controlled foundation: it does not start a background daemon automatically, and unknown or non-reversible actions are held instead of executed.
 
 ## Opt-in autonomy scheduler
 
-`living_ai.scheduler.AutonomyScheduler` adds explicit pause/resume, interval-based cycle gating,
-disable/enable controls, status reporting, and a per-run cycle budget. It never starts itself,
-creates a background thread, or bypasses the autonomy engine's action policy.
+`living_ai.scheduler.AutonomyScheduler` adds explicit pause/resume, interval-based cycle gating, disable/enable controls, status reporting, and a per-run cycle budget. It never starts itself, creates a background thread, or bypasses the autonomy engine's action policy.
 
 See [docs/SCHEDULER.md](docs/SCHEDULER.md). Tests are in `tests/test_scheduler.py`.
 
-
 ## Goal planner (Phase 3 foundation)
 
-`living_ai.planner.GoalPlanner` creates bounded, inspectable goal proposals and queues them for
-review without executing them. The baseline planner is deterministic and conservative; it does
-not call a model or access the network. See [docs/PLANNER.md](docs/PLANNER.md).
+`living_ai.planner.GoalPlanner` creates bounded, inspectable goal proposals and queues them for review without executing them. The baseline planner is deterministic and conservative; it does not call a model or access the network. See [docs/PLANNER.md](docs/PLANNER.md).
+
+## Cognitive Core (Phase 4 foundation)
+
+Optional model-assisted goal decomposition is available through `living_ai.cognitive.CognitiveCore`. Remote planning is opt-in, validates model output, restricts suggestions to short text items, and falls back to the deterministic planner on invalid or unavailable responses. Plans remain review-only. See [docs/COGNITIVE_CORE.md](docs/COGNITIVE_CORE.md).
+
+## Learning and evaluation memory (Phase 5 foundation)
+
+The optional `living_ai.learning.LearningStore` records reviewed outcomes and scores in local SQLite, retrieves similar prior evaluations using lightweight lexical overlap, and summarizes score trends. It does not independently verify success or modify model weights. See [docs/LEARNING.md](docs/LEARNING.md).
+
+## Review-first evolution coordinator (Phase 6)
+
+The `living_ai.coordinator.EvolutionCoordinator` connects the planner, optional cognitive adapter, SQLite evaluation memory, and persistent autonomy queue. `prepare()` returns a plan alongside relevant past evaluations without queueing or executing it; `submit_for_review()` queues proposals only; and `record_evaluation()` stores feedback provided by a caller or human reviewer. Prior evaluations are shown as context and are not injected into model prompts. Remote planning remains opt-in, and the autonomy engine's registered-action policy remains the execution gate.
+
+See [docs/EVOLUTION_LOOP.md](docs/EVOLUTION_LOOP.md). Tests are in `tests/test_coordinator.py`.
