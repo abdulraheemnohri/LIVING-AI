@@ -107,3 +107,10 @@ disable/enable controls, status reporting, and a per-run cycle budget. It never 
 creates a background thread, or bypasses the autonomy engine's action policy.
 
 See [docs/SCHEDULER.md](docs/SCHEDULER.md). Tests are in `tests/test_scheduler.py`.
+
+
+## Goal planner (Phase 3 foundation)
+
+`living_ai.planner.GoalPlanner` creates bounded, inspectable goal proposals and queues them for
+review without executing them. The baseline planner is deterministic and conservative; it does
+not call a model or access the network. See [docs/PLANNER.md](docs/PLANNER.md).
