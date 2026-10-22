@@ -47,3 +47,13 @@ def test_collect_text_rejects_too_small_corpus(tmp_path):
     (corpus / "small.txt").write_text("tiny", encoding="utf-8")
     with pytest.raises(ValueError, match="too small"):
         collect_text(corpus)
+
+
+def test_collect_text_accepts_json(tmp_path):
+    from living_ai.neural_training import collect_text
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    (corpus / "facts.json").write_text('{"language":"Urdu","text":"سلام دنیا"}', encoding="utf-8")
+    text, count = collect_text(corpus)
+    assert "سلام دنیا" in text
+    assert count == 1
