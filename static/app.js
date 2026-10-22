@@ -8,3 +8,21 @@ go=function(v){originalGo(v);if(v==="settings")loadModelStatus()};
 status();
 
 $("#scratchform").onsubmit=async e=>{e.preventDefault();const out=$("#scratchresult");out.textContent="Training started; keep this page open. CPU training can take time.";try{const d=await api("/api/training/train-from-scratch",{method:"POST",body:JSON.stringify({input_dir:"data/corpus",output_dir:"models/tiny_transformer",steps:Number($("#scratchsteps").value),batch_size:Number($("#scratchbatch").value),width:Number($("#scratchwidth").value),heads:4,layers:2,block_size:Number($("#scratchblock").value),seed:42})});out.textContent=JSON.stringify(d,null,2);note("From-scratch training finished");status()}catch(err){out.textContent=err.message;note("Training failed")}};
+
+async function importLocalFiles(){
+ const input=$("#knowledgefiles"),out=$("#fileimportresult");out.textContent="";
+ const files=Array.from(input.files||[]);if(!files.length){out.textContent="Choose at least one file.";return}
+ const results=[];
+ for(const file of files){
+  try{
+   if(file.size>2_000_000)throw Error("File is over 2 MB");
+   const content=await file.text();
+   const data=await api("/api/knowledge/ingest-file",{method:"POST",body:JSON.stringify({filename:file.name,content})});
+   results.push({file:file.name,ok:true,chunks:data.chunks,characters:data.characters});
+  }catch(e){results.push({file:file.name,ok:false,error:e.message})}
+  out.textContent=JSON.stringify(results,null,2);
+ }
+ note("File import finished");status();
+}
+if($("#fileimportform"))$("#fileimportform").onsubmit=async e=>{e.preventDefault();await importLocalFiles()};
+if($("#urlimportform"))$("#urlimportform").onsubmit=async e=>{e.preventDefault();const out=$("#urlimportresult");out.textContent="Fetching public webpage…";try{const d=await api("/api/knowledge/ingest-url",{method:"POST",body:JSON.stringify({url:$("#knowledgeurl").value.trim()})});out.textContent=JSON.stringify({ingested:d.ingested,url:d.url,chunks:d.chunks,characters:d.characters},null,2);note("Webpage imported into local memory");status()}catch(err){out.textContent=err.message;note("Website import failed")}};
