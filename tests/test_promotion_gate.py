@@ -80,7 +80,7 @@ def test_gate_blocks_a_regression_and_persists_decision(client, tmp_path):
 
 
 def test_gate_allows_clean_window_only_for_human_review(client, tmp_path):
-    _seed_runs(tmp_path, [1.0, 1.0, 1.0, 0.875])
+    _seed_runs(tmp_path, [0.875, 1.0, 1.0, 1.0])
     response = client.post("/api/evaluation/gate/check?window=3&min_score=1.0",
                            headers={"Authorization": "Bearer test-admin-token"}, json={})
     assert response.status_code == 201
