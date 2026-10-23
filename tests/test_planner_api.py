@@ -8,7 +8,7 @@ import living_ai.planner_api as planner_api
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("LIVING_AI_DATA_DIR", str(tmp_path))
-    monkeypatch.setenv("LIVING_AI_ADMIN_TOKEN", "test-admin-token")
+    monkeypatch.setenv("LIVING_AI_ADMIN_PASSWORD", "test-admin-password")
     monkeypatch.setenv("LIVING_AI_ALLOW_REMOTE_PROVIDER", "false")
     planner_api._engine = None
     planner_api._coordinator_instance = None
@@ -19,7 +19,7 @@ def client(tmp_path, monkeypatch):
 
 
 def test_prepare_is_persistent_and_does_not_submit(client):
-    headers = {"Authorization": "Bearer test-admin-token"}
+    headers = {"X-Admin-Password": "test-admin-password"}
     response = client.post(
         "/api/planner/prepare",
         headers=headers,
@@ -36,7 +36,7 @@ def test_prepare_is_persistent_and_does_not_submit(client):
 
 
 def test_submit_queues_plan_without_executing_and_rejects_duplicate(client):
-    headers = {"Authorization": "Bearer test-admin-token"}
+    headers = {"X-Admin-Password": "test-admin-password"}
     prepared = client.post(
         "/api/planner/prepare", headers=headers, json={"goal": "Write a small note."}
     ).json()
@@ -56,7 +56,7 @@ def test_submit_queues_plan_without_executing_and_rejects_duplicate(client):
 
 
 def test_evaluation_is_saved_to_local_learning_memory(client):
-    headers = {"Authorization": "Bearer test-admin-token"}
+    headers = {"X-Admin-Password": "test-admin-password"}
     response = client.post(
         "/api/planner/evaluations",
         headers=headers,
@@ -75,6 +75,6 @@ def test_evaluation_is_saved_to_local_learning_memory(client):
 
 
 def test_planner_routes_fail_closed_without_admin_token(client, monkeypatch):
-    monkeypatch.delenv("LIVING_AI_ADMIN_TOKEN")
+    monkeypatch.delenv("LIVING_AI_ADMIN_PASSWORD")
     response = client.get("/api/planner/proposals")
     assert response.status_code == 503
