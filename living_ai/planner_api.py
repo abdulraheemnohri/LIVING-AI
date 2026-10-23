@@ -1,6 +1,6 @@
-import hmac
 """Authenticated API for persistent, review-first evolution planning."""
 from __future__ import annotations
+import hmac
 
 import json
 import os
