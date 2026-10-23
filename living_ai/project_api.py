@@ -3,7 +3,7 @@ from __future__ import annotations
 import hmac, os, sqlite3, uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 from litestar import Request, get, post, patch, delete
 from litestar.exceptions import HTTPException
 from pydantic import BaseModel, Field
@@ -31,12 +31,16 @@ def _db():
       id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
       title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'todo',
       priority TEXT NOT NULL DEFAULT 'medium', due_date TEXT NOT NULL DEFAULT '',
+      dependency_id TEXT NOT NULL DEFAULT '', milestone_id TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS project_activity(
       id INTEGER PRIMARY KEY AUTOINCREMENT, project_id TEXT NOT NULL,
       action TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL);
     """)
     c.execute("PRAGMA foreign_keys=ON")
+    columns={r["name"] for r in c.execute("PRAGMA table_info(work_items)").fetchall()}
+    if "dependency_id" not in columns: c.execute("ALTER TABLE work_items ADD COLUMN dependency_id TEXT NOT NULL DEFAULT ''")
+    if "milestone_id" not in columns: c.execute("ALTER TABLE work_items ADD COLUMN milestone_id TEXT NOT NULL DEFAULT ''")
     return c
 
 def _now(): return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -57,6 +61,8 @@ class WorkItemInput(BaseModel):
     status: str = Field(default="todo",pattern="^(todo|in_progress|blocked|done)$")
     priority: str = Field(default="medium",pattern="^(low|medium|high|critical)$")
     due_date: str = Field(default="",max_length=10)
+    dependency_id: str = Field(default="", max_length=32)
+    milestone_id: str = Field(default="", max_length=32)
 
 @get("/api/projects", sync_to_thread=True)
 def list_projects(request: Request) -> dict[str,Any]:
@@ -106,7 +112,10 @@ def list_work_items(project_id: str, request: Request) -> dict[str,Any]:
     _auth(request)
     with _db() as c:
         if not c.execute("SELECT 1 FROM projects WHERE id=?",(project_id,)).fetchone(): raise HTTPException(status_code=404,detail="Project not found")
-        rows=c.execute("SELECT * FROM work_items WHERE project_id=? ORDER BY CASE status WHEN 'in_progress' THEN 0 WHEN 'todo' THEN 1 WHEN 'blocked' THEN 2 ELSE 3 END,updated_at DESC",(project_id,)).fetchall()
+        rows=c.execute("""SELECT w.*, d.title AS dependency_title, m.title AS milestone_title
+          FROM work_items w LEFT JOIN work_items d ON d.id=w.dependency_id
+          LEFT JOIN milestones m ON m.id=w.milestone_id
+          WHERE w.project_id=? ORDER BY CASE w.status WHEN 'in_progress' THEN 0 WHEN 'todo' THEN 1 WHEN 'blocked' THEN 2 ELSE 3 END,w.updated_at DESC""",(project_id,)).fetchall()
     return {"items":[dict(r) for r in rows]}
 
 @post("/api/projects/{project_id:str}/items", sync_to_thread=True)
@@ -114,7 +123,13 @@ def create_work_item(project_id: str, data: WorkItemInput, request: Request) -> 
     _auth(request); now=_now(); wid=uuid.uuid4().hex[:12]
     with _db() as c:
         if not c.execute("SELECT 1 FROM projects WHERE id=?",(project_id,)).fetchone(): raise HTTPException(status_code=404,detail="Project not found")
-        c.execute("INSERT INTO work_items(id,project_id,title,description,status,priority,due_date,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)",(wid,project_id,data.title.strip(),data.description,data.status,data.priority,data.due_date,now,now))
+        if data.dependency_id and not c.execute("SELECT 1 FROM work_items WHERE id=? AND project_id=?",(data.dependency_id,project_id)).fetchone():
+            raise HTTPException(status_code=400,detail="Dependency must be another work item in this project")
+        if data.milestone_id:
+            try: ms=c.execute("SELECT 1 FROM milestones WHERE id=? AND project_id=?",(data.milestone_id,project_id)).fetchone()
+            except sqlite3.OperationalError: ms=None
+            if not ms: raise HTTPException(status_code=400,detail="Milestone must belong to this project")
+        c.execute("INSERT INTO work_items(id,project_id,title,description,status,priority,due_date,dependency_id,milestone_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",(wid,project_id,data.title.strip(),data.description,data.status,data.priority,data.due_date,data.dependency_id,data.milestone_id,now,now))
         _log(c, project_id, "work_item_created", data.title.strip())
         return dict(c.execute("SELECT * FROM work_items WHERE id=?",(wid,)).fetchone())
 
@@ -122,7 +137,20 @@ def create_work_item(project_id: str, data: WorkItemInput, request: Request) -> 
 def update_work_item(project_id: str, item_id: str, data: WorkItemInput, request: Request) -> dict[str,Any]:
     _auth(request); now=_now()
     with _db() as c:
-        cur=c.execute("UPDATE work_items SET title=?,description=?,status=?,priority=?,due_date=?,updated_at=? WHERE id=? AND project_id=?",(data.title.strip(),data.description,data.status,data.priority,data.due_date,now,item_id,project_id))
+        if data.dependency_id:
+            if data.dependency_id==item_id: raise HTTPException(status_code=400,detail="A task cannot depend on itself")
+            dep=c.execute("SELECT 1 FROM work_items WHERE id=? AND project_id=?",(data.dependency_id,project_id)).fetchone()
+            if not dep: raise HTTPException(status_code=400,detail="Dependency must be another work item in this project")
+            cycle=c.execute("""WITH RECURSIVE chain(id,dependency_id) AS (
+              SELECT id,dependency_id FROM work_items WHERE id=?
+              UNION ALL SELECT w.id,w.dependency_id FROM work_items w JOIN chain c ON w.id=c.dependency_id
+            ) SELECT 1 FROM chain WHERE id=? LIMIT 1""",(data.dependency_id,item_id)).fetchone()
+            if cycle: raise HTTPException(status_code=400,detail="Dependency would create a cycle")
+        if data.milestone_id:
+            try: ms=c.execute("SELECT 1 FROM milestones WHERE id=? AND project_id=?",(data.milestone_id,project_id)).fetchone()
+            except sqlite3.OperationalError: ms=None
+            if not ms: raise HTTPException(status_code=400,detail="Milestone must belong to this project")
+        cur=c.execute("UPDATE work_items SET title=?,description=?,status=?,priority=?,due_date=?,dependency_id=?,milestone_id=?,updated_at=? WHERE id=? AND project_id=?",(data.title.strip(),data.description,data.status,data.priority,data.due_date,data.dependency_id,data.milestone_id,now,item_id,project_id))
         if not cur.rowcount: raise HTTPException(status_code=404,detail="Work item not found")
         _log(c, project_id, "work_item_updated", data.title.strip() + " [" + data.status + "]")
         return dict(c.execute("SELECT * FROM work_items WHERE id=?",(item_id,)).fetchone())
