@@ -68,6 +68,73 @@ class WorkItemInput(BaseModel):
     dependency_id: str = Field(default="", max_length=32)
     milestone_id: str = Field(default="", max_length=32)
 
+
+@get("/api/projects/export", sync_to_thread=True)
+def export_projects(request: Request) -> dict[str, Any]:
+    """Export all project data as a versioned JSON document for portable backups."""
+    _auth(request)
+    with _db() as c:
+        projects = [dict(r) for r in c.execute("SELECT * FROM projects ORDER BY created_at").fetchall()]
+        milestones = [dict(r) for r in c.execute("SELECT * FROM milestones ORDER BY created_at").fetchall()]
+        work_items = [dict(r) for r in c.execute("SELECT * FROM work_items ORDER BY created_at").fetchall()]
+        activity = [dict(r) for r in c.execute("SELECT project_id,action,detail,created_at FROM project_activity ORDER BY id").fetchall()]
+    return {"format": "living-ai-projects", "version": 1, "exported_at": _now(),
+            "projects": projects, "milestones": milestones, "work_items": work_items, "activity": activity}
+
+class ProjectImport(BaseModel):
+    format: str = Field(min_length=1, max_length=80)
+    version: int = Field(ge=1, le=1)
+    projects: list[dict[str, Any]] = Field(max_length=500)
+    milestones: list[dict[str, Any]] = Field(default_factory=list, max_length=5000)
+    work_items: list[dict[str, Any]] = Field(default_factory=list, max_length=20000)
+
+@post("/api/projects/import", sync_to_thread=True)
+def import_projects(data: ProjectImport, request: Request) -> dict[str, Any]:
+    """Import a backup as new records; existing data is never overwritten."""
+    _auth(request)
+    if data.format != "living-ai-projects":
+        raise HTTPException(status_code=400, detail="Unsupported backup format")
+    if len(data.projects) > 500 or len(data.milestones) > 5000 or len(data.work_items) > 20000:
+        raise HTTPException(status_code=400, detail="Backup exceeds supported limits")
+    project_ids = {}
+    now = _now()
+    try:
+        with _db() as c:
+            for p in data.projects:
+                name = str(p.get("name", "")).strip()
+                if not name or len(name) > 160: raise ValueError("Each project needs a name up to 160 characters")
+                pid = uuid.uuid4().hex[:12]; project_ids[str(p.get("id", ""))] = pid
+                c.execute("INSERT INTO projects(id,name,description,status,priority,due_date,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)",
+                          (pid, name, str(p.get("description", ""))[:4000],
+                           p.get("status") if p.get("status") in {"active","on_hold","completed","archived"} else "active",
+                           p.get("priority") if p.get("priority") in {"low","medium","high","critical"} else "medium",
+                           str(p.get("due_date", ""))[:10], now, now))
+                _log(c, pid, "project_imported", name)
+            milestone_ids = {}
+            for m in data.milestones:
+                pid = project_ids.get(str(m.get("project_id", "")))
+                if not pid: continue
+                mid = uuid.uuid4().hex[:12]; milestone_ids[str(m.get("id", ""))] = mid
+                c.execute("INSERT INTO milestones(id,project_id,title,description,status,due_date,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)",
+                          (mid, pid, str(m.get("title", "Imported milestone"))[:200],
+                           str(m.get("description", ""))[:2000],
+                           m.get("status") if m.get("status") in {"planned","in_progress","completed","at_risk"} else "planned",
+                           str(m.get("due_date", ""))[:10], now, now))
+            for w in data.work_items:
+                pid = project_ids.get(str(w.get("project_id", "")))
+                if not pid: continue
+                wid = uuid.uuid4().hex[:12]
+                status = w.get("status") if w.get("status") in {"todo","in_progress","blocked","done"} else "todo"
+                priority = w.get("priority") if w.get("priority") in {"low","medium","high","critical"} else "medium"
+                c.execute("INSERT INTO work_items(id,project_id,title,description,status,priority,due_date,dependency_id,milestone_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                          (wid, pid, str(w.get("title", "Imported work item"))[:200],
+                           str(w.get("description", ""))[:4000], status, priority, str(w.get("due_date", ""))[:10],
+                           "", milestone_ids.get(str(w.get("milestone_id", "")), ""), now, now))
+                _log(c, pid, "work_item_imported", str(w.get("title", ""))[:200])
+    except (ValueError, TypeError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"imported": True, "projects": len(project_ids), "milestones": len(milestone_ids), "work_items": len(data.work_items)}
+
 @get("/api/projects", sync_to_thread=True)
 def list_projects(request: Request) -> dict[str,Any]:
     _auth(request)
