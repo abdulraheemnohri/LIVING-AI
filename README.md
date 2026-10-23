@@ -16,6 +16,16 @@ bash scripts/run.sh
 
 Open http://127.0.0.1:8000 in a browser. The server binds to localhost by default.
 
+## Update an existing installation
+
+From the repository directory, run:
+
+```bash
+bash scripts/update_android_debian.sh
+```
+
+The updater requires a clean Git working tree on `main` and a `.venv` created by the installer. It fetches `origin/main`, performs a fast-forward-only update, backs up `.env` and `data/` under a timestamped `backups/update-*` directory, reinstalls development dependencies, compiles Python modules, syntax-checks the dashboard when Node.js is available, and runs the test suite. If an update/check fails, it attempts to reset the code to the previous commit. Dependency changes may remain after rollback; inspect the error before restarting. Keep a separate backup of important data too.
+
 ## Hybrid architecture: Model B is the trainable model; Model A is the fallback
 
 - **Model A — Character n-gram:** fallback/inference baseline only in the intended two-model workflow. It is not the target of the Model B training pipeline.
