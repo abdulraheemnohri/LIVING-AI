@@ -58,7 +58,8 @@ async def index() -> Response:
 @get("/api/health")
 async def health() -> dict[str, Any]:return {"ok":True,"name":"LIVING AI","version":"0.4.0"}
 @get("/api/status")
-async def status() -> dict[str, Any]:
+async def status(request: Request) -> dict[str, Any]:
+    auth(request)
     with connect() as c: n=c.execute("SELECT COUNT(*) n FROM memories").fetchone()["n"];p=c.execute("SELECT COUNT(*) n FROM proposals").fetchone()["n"]
     return {"status":"running","memories":n,"proposals":p,"original_model_trained":(ROOT/"models"/"char_ngram.json").exists(),"tiny_transformer_trained":(ROOT/"models"/"tiny_transformer"/"weights.pt").exists(),"settings":get_settings(),"data_dir":str(data_dir())}
 @post("/api/chat")
@@ -218,7 +219,8 @@ def train_scratch(data:TrainScratch,request:Request) -> dict[str, Any]:
         return train_small_transformer(input_dir=str(input_path),output_dir=str(output_path),steps=data.steps,batch_size=data.batch_size,learning_rate=data.learning_rate,seed=data.seed,config_overrides={"block_size":data.block_size,"d_model":data.width,"n_heads":data.heads,"n_layers":data.layers})
     except (ValueError,RuntimeError) as e: raise HTTPException(status_code=400,detail=str(e))
 @get("/api/model/status")
-async def model_status() -> dict[str, Any]:
+async def model_status(request: Request) -> dict[str, Any]:
+    auth(request)
     backend=os.getenv("LIVING_AI_MODEL_BACKEND","char_ngram").strip().lower()
     allowed={"char_ngram","tiny_transformer","from_scratch","native_transformer","litert_lm","hybrid"}
     if backend not in allowed: backend="char_ngram"
