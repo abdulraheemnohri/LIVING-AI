@@ -10,13 +10,13 @@ from living_ai.app import app
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("LIVING_AI_DATA_DIR", str(tmp_path))
-    monkeypatch.setenv("LIVING_AI_ADMIN_TOKEN", "dataset-test-token")
+    monkeypatch.setenv("LIVING_AI_ADMIN_PASSWORD", "dataset-test-password")
     with TestClient(app) as test_client:
         yield test_client
 
 
 def headers():
-    return {"Authorization": "Bearer dataset-test-token"}
+    return {"X-Admin-Password": "dataset-test-password"}
 
 
 def add_example(client, text="Explain safe maintenance.", output="Inspect the circuit with isolation."):
@@ -63,7 +63,7 @@ def test_only_approved_examples_are_exported_as_unicode_jsonl(client, tmp_path):
 
 
 def test_dataset_api_fails_closed_without_admin_token(client, monkeypatch):
-    monkeypatch.delenv("LIVING_AI_ADMIN_TOKEN")
+    monkeypatch.delenv("LIVING_AI_ADMIN_PASSWORD")
     response = client.get("/api/dataset/examples")
     assert response.status_code == 503
 
