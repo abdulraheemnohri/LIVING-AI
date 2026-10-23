@@ -28,7 +28,7 @@
     $("#pm-workspace").classList.remove("hidden");$("#pm-selected-title").textContent=p.name;$("#pm-selected-description").textContent=p.description||"No project description.";
     $("#pm-progress-fill").style.width=(p.progress||0)+"%";$("#pm-progress-label").textContent=(p.progress||0)+"% complete · "+p.completed_count+"/"+p.item_count+" work items";
   }
-  async function selectProject(id){selected=id;const p=projects.find(x=>x.id===id);if(!p)return;renderProjects();renderSelectedProject(p);resetItemForm();await loadItems();$("#pm-workspace").scrollIntoView({behavior:"smooth",block:"start"});}
+  async function selectProject(id){selected=id;const p=projects.find(x=>x.id===id);if(!p)return;renderProjects();renderSelectedProject(p);resetItemForm();await loadItems();await loadMilestones();await loadActivity();$("#pm-workspace").scrollIntoView({behavior:"smooth",block:"start"});}
   async function loadItems(){
     if(!selected)return;
     try{const d=await api("/api/projects/"+encodeURIComponent(selected)+"/items");workItems=d.items||[];renderItems();}catch(e){$("#pm-work-list").textContent=e.message;}
@@ -52,6 +52,19 @@
   $("#pm-search")?.addEventListener("input",renderProjects);
   $("#pm-status-filter")?.addEventListener("change",renderItems);
   $("#new-project-focus")?.addEventListener("click",()=>{resetProjectForm();$("#pm-editor").scrollIntoView({behavior:"smooth",block:"start"});$("#pm-name").focus();});
+
+  async function loadMilestones(){
+    if(!selected)return;
+    try{const d=await api("/api/projects/"+encodeURIComponent(selected)+"/milestones");const ms=d.items||[];
+      $("#pm-milestone-list").innerHTML=ms.map(m=>'<div class="work-item"><b>'+esc(m.title)+'</b> · '+esc(labels[m.status]||m.status)+'<p>'+esc(m.description||"")+'</p><small>'+dateText(m.due_date)+'</small><div class="button-row"><button type="button" class="secondary small-button" data-m-edit="'+esc(m.id)+'">Edit</button><button type="button" class="danger small-button" data-m-delete="'+esc(m.id)+'">Delete</button></div></div>').join("")||'<p class="empty-state">No milestones yet.</p>';
+      document.querySelectorAll("[data-m-edit]").forEach(b=>b.onclick=()=>{const m=ms.find(x=>x.id===b.dataset.mEdit);if(!m)return;$("#pm-milestone-id").value=m.id;$("#pm-milestone-title").value=m.title;$("#pm-milestone-description").value=m.description;$("#pm-milestone-status").value=m.status;$("#pm-milestone-due").value=m.due_date||"";$("#pm-save-milestone").textContent="Save milestone";$("#pm-cancel-milestone").classList.remove("hidden");});
+      document.querySelectorAll("[data-m-delete]").forEach(b=>b.onclick=async()=>{const m=ms.find(x=>x.id===b.dataset.mDelete);if(!m||!confirm("Delete milestone?"))return;try{await api("/api/projects/"+encodeURIComponent(selected)+"/milestones/"+encodeURIComponent(m.id),{method:"DELETE"});await loadMilestones();await loadActivity();}catch(e){note(e.message);}});
+    }catch(e){$("#pm-milestone-list").textContent=e.message;}
+  }
+  async function loadActivity(){if(!selected)return;try{const d=await api("/api/projects/"+encodeURIComponent(selected)+"/activity");$("#pm-activity-list").innerHTML=(d.items||[]).map(a=>'<div class="work-item"><b>'+esc(a.action.replaceAll("_"," "))+'</b><p>'+esc(a.detail)+'</p><small>'+esc(a.created_at)+'</small></div>').join("")||'<p class="empty-state">No activity yet.</p>';}catch(e){$("#pm-activity-list").textContent=e.message;}}
+  $("#pm-milestone-form")?.addEventListener("submit",async e=>{e.preventDefault();if(!selected){note("Select a project first");return;}const id=$("#pm-milestone-id").value;const payload={title:$("#pm-milestone-title").value.trim(),description:$("#pm-milestone-description").value,status:$("#pm-milestone-status").value,due_date:$("#pm-milestone-due").value};try{await api("/api/projects/"+encodeURIComponent(selected)+"/milestones"+(id?"/"+encodeURIComponent(id):""),{method:id?"PATCH":"POST",body:JSON.stringify(payload)});$("#pm-milestone-form").reset();$("#pm-milestone-id").value="";$("#pm-save-milestone").textContent="Add milestone";$("#pm-cancel-milestone").classList.add("hidden");await loadMilestones();await loadActivity();}catch(err){note(err.message);}});
+  $("#pm-cancel-milestone")?.addEventListener("click",()=>{$("#pm-milestone-form").reset();$("#pm-milestone-id").value="";$("#pm-save-milestone").textContent="Add milestone";$("#pm-cancel-milestone").classList.add("hidden");});
+  $("#pm-refresh-milestones")?.addEventListener("click",loadMilestones);$("#pm-refresh-activity")?.addEventListener("click",loadActivity);
   if(typeof go==="function"){const oldGo=go;go=function(v){oldGo(v);if(v==="projects")loadProjects();};}
   document.querySelectorAll('[data-view="projects"]').forEach(b=>b.addEventListener("click",loadProjects));
 })();
