@@ -110,7 +110,7 @@ Set `LIVING_AI_ALLOW_REMOTE_PROVIDER=true`, `LIVING_AI_PROVIDER_URL`, `LIVING_AI
 
 The evolution engine can only change the explicitly allowlisted settings `temperature`, `max_reply_chars`, and `retrieval_limit`. Changes are validated, snapshotted, and audited. It does not execute arbitrary shell commands, install packages, or rewrite its own Python source. Automatic promotion is opt-in through `LIVING_AI_AUTO_PROMOTE=true`.
 
-Before exposing the server on a network, set `LIVING_AI_ADMIN_TOKEN` and review [SECURITY.md](SECURITY.md). Data lives under `LIVING_AI_DATA_DIR` (default `./data`).
+Before exposing the server on a network, set `LIVING_AI_ADMIN_PASSWORD` and review [SECURITY.md](SECURITY.md). Data lives under `LIVING_AI_DATA_DIR` (default `./data`).
 
 ## Development
 
@@ -170,7 +170,7 @@ See [docs/EVOLUTION_LOOP.md](docs/EVOLUTION_LOOP.md). Tests are in
 
 ## Persistent AI Planner dashboard (Phase 9)
 
-The **AI Planner** view exposes the review-first evolution coordinator. Prepare a bounded plan with relevant past evaluations, inspect and persist it, submit it once to the registered-action queue, and record explicit human/caller outcome feedback. Planner endpoints require `LIVING_AI_ADMIN_TOKEN`. Remote planning requires both request-level opt-in and `LIVING_AI_ALLOW_REMOTE_PROVIDER=true`; if enabled, the goal is sent to the configured remote provider. Preparing or submitting a plan never runs an execution cycle. See [docs/PLANNER_API.md](docs/PLANNER_API.md).
+The **AI Planner** view exposes the review-first evolution coordinator. Prepare a bounded plan with relevant past evaluations, inspect and persist it, submit it once to the registered-action queue, and record explicit human/caller outcome feedback. Planner endpoints require `LIVING_AI_ADMIN_PASSWORD`. Remote planning requires both request-level opt-in and `LIVING_AI_ALLOW_REMOTE_PROVIDER=true`; if enabled, the goal is sent to the configured remote provider. Preparing or submitting a plan never runs an execution cycle. See [docs/PLANNER_API.md](docs/PLANNER_API.md).
 
 
 ## Controlled Evolution Worker (Phase 10)
@@ -180,7 +180,7 @@ The Worker Control dashboard provides persistent enable/disable and pause/resume
 
 ## Offline Evaluation Lab (Phase 11)
 
-The **Evaluation Lab** runs eight fixed regression cases against the deterministic planner and persists run history in SQLite. It checks bounded step counts, preserved goals, explicit review requirements, action allowlisting, payload limits, and Unicode input handling. Open the Evaluation Lab dashboard page or use `POST /api/evaluation/run`; inspect history with `GET /api/evaluation/runs`. Both endpoints require `LIVING_AI_ADMIN_TOKEN`.
+The **Evaluation Lab** runs eight fixed regression cases against the deterministic planner and persists run history in SQLite. It checks bounded step counts, preserved goals, explicit review requirements, action allowlisting, payload limits, and Unicode input handling. Open the Evaluation Lab dashboard page or use `POST /api/evaluation/run`; inspect history with `GET /api/evaluation/runs`. Both endpoints require `LIVING_AI_ADMIN_PASSWORD`.
 
 This is a structural regression suite, not a semantic-quality benchmark. It does not invoke remote models, train weights, approve plans, or execute actions. See [docs/EVALUATION_LAB.md](docs/EVALUATION_LAB.md).
 
