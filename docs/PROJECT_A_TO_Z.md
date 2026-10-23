@@ -160,3 +160,12 @@ Any additional dataset, teacher-assist or training-job settings should be added 
 ## 10. Release criteria and known gaps
 
 The main outstanding work is the actual Model B-assisted Model A training workflow: multi-source dataset selection, dataset preview/versioning, teacher assistance, bounded training jobs, evaluation, checkpoint promotion and rollback. The LiteRT-LM adapter and real generation also need runtime validation. Do not label the project fully tested until the test suite, UI/API smoke tests and target-device model generation have passed.
+
+## 9. Project workspace and GitHub update operations
+
+The repository also includes a password-protected SQLite project workspace for projects, tasks, task dependencies, milestones, activity history, and versioned JSON backup/import. See [Project Management](PROJECT_MANAGEMENT.md) for routes and limitations.
+
+The supported application update path for Android Debian/Linux is `bash scripts/update_android_debian.sh`. It requires a clean `main` checkout, creates a timestamped backup of `.env` and `data/`, only accepts a fast-forward from `origin/main`, installs dependencies, runs compile/syntax checks and tests, and attempts a code rollback if checks fail. See [GitHub Updates and Projects](GITHUB_UPDATES_AND_PROJECTS.md).
+
+**Automatic update safety:** this is a controlled updater, not an AI self-modifying daemon. Scheduled unattended updates are not enabled by default. Do not automatically execute newly pulled code without backups, validation and a clear operator-controlled policy. A future GitHub project sync (issues, pull requests, commit history, repository status) is separate from updating the local application source.
+
