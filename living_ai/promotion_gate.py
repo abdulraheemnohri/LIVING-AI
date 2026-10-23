@@ -1,10 +1,10 @@
-import hmac
 """Regression promotion gate based on persisted offline evaluation runs.
 
 This gate records decisions only. It never deploys code, changes model weights,
 approves goals, or enables worker execution.
 """
 from __future__ import annotations
+import hmac
 
 import json
 import os
