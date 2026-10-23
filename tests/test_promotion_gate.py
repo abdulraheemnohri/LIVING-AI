@@ -14,7 +14,7 @@ import living_ai.worker_api as worker_api
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("LIVING_AI_DATA_DIR", str(tmp_path))
-    monkeypatch.setenv("LIVING_AI_ADMIN_TOKEN", "test-admin-token")
+    monkeypatch.setenv("LIVING_AI_ADMIN_PASSWORD", "test-admin-password")
     planner_api._engine = None
     planner_api._coordinator_instance = None
     worker_api._worker = None
@@ -47,7 +47,7 @@ def _seed_runs(tmp_path, scores):
 
 def test_gate_fails_closed_when_no_evaluation_history_exists(client):
     response = client.post("/api/evaluation/gate/check?window=3&min_score=1.0",
-                           headers={"Authorization": "Bearer test-admin-token"}, json={})
+                           headers={"X-Admin-Password": "test-admin-password"}, json={})
     assert response.status_code == 201
     result = response.json()
     assert result["eligible"] is False
@@ -58,7 +58,7 @@ def test_gate_fails_closed_when_no_evaluation_history_exists(client):
 def test_gate_fails_closed_when_history_is_too_short(client, tmp_path):
     _seed_runs(tmp_path, [1.0, 1.0])
     response = client.post("/api/evaluation/gate/check?window=3&min_score=1.0",
-                           headers={"Authorization": "Bearer test-admin-token"}, json={})
+                           headers={"X-Admin-Password": "test-admin-password"}, json={})
     assert response.status_code == 201
     result = response.json()
     assert result["eligible"] is False
@@ -68,7 +68,7 @@ def test_gate_fails_closed_when_history_is_too_short(client, tmp_path):
 
 def test_gate_blocks_a_regression_and_persists_decision(client, tmp_path):
     _seed_runs(tmp_path, [1.0, 1.0, 0.75, 0.5])
-    headers = {"Authorization": "Bearer test-admin-token"}
+    headers = {"X-Admin-Password": "test-admin-password"}
     response = client.post("/api/evaluation/gate/check?window=3&min_score=0.7", headers=headers, json={})
     assert response.status_code == 201
     result = response.json()
@@ -82,7 +82,7 @@ def test_gate_blocks_a_regression_and_persists_decision(client, tmp_path):
 def test_gate_allows_clean_window_only_for_human_review(client, tmp_path):
     _seed_runs(tmp_path, [0.875, 1.0, 1.0, 1.0])
     response = client.post("/api/evaluation/gate/check?window=3&min_score=1.0",
-                           headers={"Authorization": "Bearer test-admin-token"}, json={})
+                           headers={"X-Admin-Password": "test-admin-password"}, json={})
     assert response.status_code == 201
     result = response.json()
     assert result["eligible"] is True
@@ -91,6 +91,6 @@ def test_gate_allows_clean_window_only_for_human_review(client, tmp_path):
 
 
 def test_gate_endpoints_fail_closed_without_admin_token(client, monkeypatch):
-    monkeypatch.delenv("LIVING_AI_ADMIN_TOKEN")
+    monkeypatch.delenv("LIVING_AI_ADMIN_PASSWORD")
     response = client.post("/api/evaluation/gate/check", json={})
     assert response.status_code == 503
