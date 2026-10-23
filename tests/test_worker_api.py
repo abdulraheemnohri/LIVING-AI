@@ -1,0 +1,69 @@
+import pytest
+from litestar.testing import TestClient
+
+from living_ai.app import app
+import living_ai.planner_api as planner_api
+import living_ai.worker_api as worker_api
+
+
+@pytest.fixture
+def client(tmp_path, monkeypatch):
+    monkeypatch.setenv("LIVING_AI_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("LIVING_AI_ADMIN_TOKEN", "test-admin-token")
+    monkeypatch.setenv("LIVING_AI_ALLOW_REMOTE_PROVIDER", "false")
+    planner_api._engine = None
+    planner_api._coordinator_instance = None
+    worker_api._worker = None
+    with TestClient(app) as test_client:
+        yield test_client
+    planner_api._engine = None
+    planner_api._coordinator_instance = None
+    worker_api._worker = None
+
+
+def test_worker_starts_paused_and_does_not_tick_while_paused(client):
+    headers = {"Authorization": "Bearer test-admin-token"}
+    status = client.get("/api/worker/status", headers=headers)
+    assert status.status_code == 200
+    assert status.json()["worker"]["paused"] is True
+    tick = client.post("/api/worker/tick", headers=headers, json={})
+    assert tick.status_code == 201
+    assert tick.json()["status"] == "paused"
+    assert tick.json()["execution_performed"] is False
+
+
+def test_planner_goals_require_approval_before_worker_can_execute(client):
+    headers = {"Authorization": "Bearer test-admin-token"}
+    prepared = client.post(
+        "/api/planner/prepare", headers=headers, json={"goal": "Record a reviewable note."}
+    ).json()
+    submitted = client.post(
+        "/api/planner/submit", headers=headers, json={"plan_id": prepared["plan"]["plan_id"]}
+    )
+    assert submitted.status_code == 201
+    goal_id = submitted.json()["goal_ids"][0]
+
+    before = client.get("/api/worker/status", headers=headers).json()
+    goal = next(g for g in before["goals"] if g["id"] == goal_id)
+    assert goal["status"] == "needs_approval"
+
+    resumed = client.post("/api/worker/resume", headers=headers, json={})
+    assert resumed.status_code == 201
+    tick = client.post("/api/worker/tick", headers=headers, json={})
+    assert tick.status_code == 201
+    assert tick.json()["results"] == []
+    held = next(g for g in client.get("/api/worker/status", headers=headers).json()["goals"] if g["id"] == goal_id)
+    assert held["status"] == "needs_approval"
+
+    approval = client.post(f"/api/worker/goals/{goal_id}/approve", headers=headers, json={})
+    assert approval.status_code == 201
+    assert approval.json()["execution_performed"] is False
+    tick = client.post("/api/worker/tick", headers=headers, json={})
+    assert tick.status_code == 201
+    assert any(result["goal_id"] == goal_id and result["status"] == "completed" for result in tick.json()["results"])
+
+
+def test_worker_controls_require_admin_token(client, monkeypatch):
+    monkeypatch.delenv("LIVING_AI_ADMIN_TOKEN")
+    response = client.post("/api/worker/resume", json={})
+    assert response.status_code == 503
