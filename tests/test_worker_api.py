@@ -87,3 +87,24 @@ def test_private_read_endpoints_fail_closed_without_admin_token(client, monkeypa
     for path in paths:
         response = client.get(path)
         assert response.status_code == 503, f"{path} returned {response.status_code}"
+
+
+def test_private_read_endpoints_reject_incorrect_admin_token(client):
+    paths = [
+        "/api/status",
+        "/api/model/status",
+        "/api/memories",
+        "/api/training/datasets",
+        "/api/training/history",
+        "/api/evolution/proposals",
+        "/api/audit",
+        "/api/settings",
+        "/api/worker/status",
+        "/api/evaluation/runs",
+        "/api/evaluation/gate/history",
+        "/api/dataset/examples",
+    ]
+    headers = {"Authorization": "Bearer definitely-wrong-token"}
+    for path in paths:
+        response = client.get(path, headers=headers)
+        assert response.status_code == 401, f"{path} returned {response.status_code}"
