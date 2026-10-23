@@ -55,6 +55,7 @@ python -m pip install -e ".[dev]"
 python -m compileall -q living_ai
 if command -v node >/dev/null 2>&1 && [[ -f static/app.js ]]; then
   node --check static/app.js
+  [[ ! -f static/tasks.js ]] || node --check static/tasks.js
 fi
 python -m pytest -q
 
