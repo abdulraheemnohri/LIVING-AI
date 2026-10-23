@@ -29,3 +29,24 @@ def test_chunks_are_bounded():
 def test_localhost_url_is_rejected():
     with pytest.raises(ValueError, match="Local hostnames"):
         _assert_public_http_url("http://localhost/admin")
+
+
+@pytest.mark.parametrize("url", [
+    "http://127.0.0.1/admin",
+    "http://192.168.1.1/",
+    "http://[::1]/",
+    "http://localhost./admin",
+])
+def test_non_public_literal_and_normalized_local_urls_are_rejected(url):
+    with pytest.raises(ValueError, match="blocked|Local hostnames"):
+        _assert_public_http_url(url)
+
+
+def test_url_with_credentials_is_rejected_before_dns():
+    with pytest.raises(ValueError, match="usernames/passwords"):
+        _assert_public_http_url("https://user:pass@example.com/")
+
+
+def test_invalid_url_port_is_reported_as_validation_error():
+    with pytest.raises(ValueError, match="Invalid website port"):
+        _assert_public_http_url("https://example.com:99999/")
