@@ -28,7 +28,7 @@
     $("#pm-workspace").classList.remove("hidden");$("#pm-selected-title").textContent=p.name;$("#pm-selected-description").textContent=p.description||"No project description.";
     $("#pm-progress-fill").style.width=(p.progress||0)+"%";$("#pm-progress-label").textContent=(p.progress||0)+"% complete · "+p.completed_count+"/"+p.item_count+" work items";
   }
-  async function selectProject(id){selected=id;const p=projects.find(x=>x.id===id);if(!p)return;renderProjects();renderSelectedProject(p);resetItemForm();await loadItems();await loadMilestones();await loadActivity();$("#pm-workspace").scrollIntoView({behavior:"smooth",block:"start"});}
+  async function selectProject(id){selected=id;const p=projects.find(x=>x.id===id);if(!p)return;renderProjects();renderSelectedProject(p);resetItemForm();await loadItems();await refreshProjectExtras();await loadMilestones();await loadActivity();$("#pm-workspace").scrollIntoView({behavior:"smooth",block:"start"});}
   async function loadItems(){
     if(!selected)return;
     try{const d=await api("/api/projects/"+encodeURIComponent(selected)+"/items");workItems=d.items||[];renderItems();}catch(e){$("#pm-work-list").textContent=e.message;}
@@ -40,6 +40,27 @@
     document.querySelectorAll("[data-pm-edit-item]").forEach(b=>b.onclick=()=>editItem(b.dataset.pmEditItem));
     document.querySelectorAll("[data-pm-delete-item]").forEach(b=>b.onclick=()=>removeItem(b.dataset.pmDeleteItem));
   }
+  async function loadMilestones(){
+    if(!selected)return;
+    try{
+      const d=await api("/api/projects/"+encodeURIComponent(selected)+"/milestones"), items=d.items||[];
+      const statuses={planned:"Planned",in_progress:"In progress",completed:"Completed",at_risk:"At risk"};
+      $("#pm-milestone-list").innerHTML=items.map(m=>'<div class="work-item"><div class="work-item-heading"><b>'+esc(m.title)+'</b><span class="status-pill">'+esc(statuses[m.status]||m.status)+'</span></div><p>'+esc(m.description||"No description.")+'</p><div class="project-card-meta"><span>'+dateText(m.due_date)+'</span></div><div class="button-row"><button type="button" class="secondary small-button" data-pm-edit-milestone="'+esc(m.id)+'">Edit</button><button type="button" class="danger small-button" data-pm-delete-milestone="'+esc(m.id)+'">Delete</button></div></div>').join("")||'<p class="empty-state">No milestones yet.</p>';
+      document.querySelectorAll("[data-pm-edit-milestone]").forEach(b=>b.onclick=()=>editMilestone(b.dataset.pmEditMilestone,items));
+      document.querySelectorAll("[data-pm-delete-milestone]").forEach(b=>b.onclick=()=>removeMilestone(b.dataset.pmDeleteMilestone));
+    }catch(e){$("#pm-milestone-list").textContent=e.message;}
+  }
+  async function loadActivity(){
+    if(!selected)return;
+    try{
+      const d=await api("/api/projects/"+encodeURIComponent(selected)+"/activity"), items=d.items||[];
+      $("#pm-activity-list").innerHTML=items.map(a=>'<div class="work-item"><div class="work-item-heading"><b>'+esc(a.action.replace(/_/g," "))+'</b><small>'+esc(new Date(a.created_at).toLocaleString())+'</small></div><p>'+esc(a.detail||"")+'</p></div>').join("")||'<p class="empty-state">No activity recorded yet.</p>';
+    }catch(e){$("#pm-activity-list").textContent=e.message;}
+  }
+  function resetMilestoneForm(){$("#pm-milestone-form").reset();$("#pm-milestone-id").value="";$("#pm-save-milestone").textContent="Add milestone";$("#pm-cancel-milestone").classList.add("hidden");}
+  function editMilestone(id,items){const m=items.find(x=>x.id===id);if(!m)return;$("#pm-milestone-id").value=m.id;$("#pm-milestone-title").value=m.title;$("#pm-milestone-description").value=m.description;$("#pm-milestone-status").value=m.status;$("#pm-milestone-due").value=m.due_date||"";$("#pm-save-milestone").textContent="Save milestone";$("#pm-cancel-milestone").classList.remove("hidden");}
+  async function removeMilestone(id){if(!confirm("Delete this milestone?"))return;try{await api("/api/projects/"+encodeURIComponent(selected)+"/milestones/"+encodeURIComponent(id),{method:"DELETE"});note("Milestone deleted");await refreshProjectExtras();}catch(e){note(e.message);}}
+  async function refreshProjectExtras(){await Promise.all([loadMilestones(),loadActivity()]);}
   function editProject(id){const p=projects.find(x=>x.id===id);if(!p)return;$("#pm-project-id").value=p.id;$("#pm-name").value=p.name;$("#pm-description").value=p.description;$("#pm-status").value=p.status;$("#pm-priority").value=p.priority;$("#pm-due-date").value=p.due_date||"";$("#pm-form-title").textContent="Edit project";$("#pm-save-project").textContent="Save changes";$("#pm-cancel-edit").classList.remove("hidden");$("#pm-editor").scrollIntoView({behavior:"smooth",block:"start"});}
   function editItem(id){const i=workItems.find(x=>x.id===id);if(!i)return;$("#pm-item-id").value=i.id;$("#pm-item-title").value=i.title;$("#pm-item-description").value=i.description;$("#pm-item-status").value=i.status;$("#pm-item-priority").value=i.priority;$("#pm-item-due").value=i.due_date||"";$("#pm-save-item").textContent="Save work item";$("#pm-cancel-item").classList.remove("hidden");$("#pm-item-form").scrollIntoView({behavior:"smooth",block:"center"});}
   async function removeItem(id){const item=workItems.find(x=>x.id===id);if(!item||!confirm('Delete work item "'+item.title+'"?'))return;try{await api("/api/projects/"+encodeURIComponent(selected)+"/items/"+encodeURIComponent(id),{method:"DELETE"});note("Work item deleted");await loadProjects();}catch(e){note(e.message);}}
@@ -47,6 +68,10 @@
   $("#pm-cancel-edit")?.addEventListener("click",resetProjectForm);
   $("#pm-item-form")?.addEventListener("submit",async e=>{e.preventDefault();if(!selected){note("Select a project first");return;}const id=$("#pm-item-id").value;try{await api("/api/projects/"+encodeURIComponent(selected)+"/items"+(id?"/"+encodeURIComponent(id):""),{method:id?"PATCH":"POST",body:JSON.stringify(itemPayload())});resetItemForm();note(id?"Work item updated":"Work item added");await loadProjects();}catch(err){note(err.message);}});
   $("#pm-cancel-item")?.addEventListener("click",resetItemForm);
+  $("#pm-milestone-form")?.addEventListener("submit",async e=>{e.preventDefault();if(!selected){note("Select a project first");return;}const id=$("#pm-milestone-id").value;const payload={title:$("#pm-milestone-title").value.trim(),description:$("#pm-milestone-description").value,status:$("#pm-milestone-status").value,due_date:$("#pm-milestone-due").value};try{await api("/api/projects/"+encodeURIComponent(selected)+"/milestones"+(id?"/"+encodeURIComponent(id):""),{method:id?"PATCH":"POST",body:JSON.stringify(payload)});resetMilestoneForm();note(id?"Milestone updated":"Milestone added");await refreshProjectExtras();}catch(err){note(err.message);}});
+  $("#pm-cancel-milestone")?.addEventListener("click",resetMilestoneForm);
+  $("#pm-refresh-milestones")?.addEventListener("click",loadMilestones);
+  $("#pm-refresh-activity")?.addEventListener("click",loadActivity);
   $("#pm-delete-project")?.addEventListener("click",async()=>{const p=projects.find(x=>x.id===selected);if(!p||!confirm('Delete project "'+p.name+'" and all its work items? This cannot be undone.'))return;try{await api("/api/projects/"+encodeURIComponent(selected),{method:"DELETE"});selected=null;$("#pm-workspace").classList.add("hidden");resetProjectForm();note("Project deleted");await loadProjects();}catch(e){note(e.message);}});
   $("#pm-refresh")?.addEventListener("click",loadProjects);
   $("#pm-search")?.addEventListener("input",renderProjects);
