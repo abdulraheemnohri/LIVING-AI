@@ -53,6 +53,7 @@ jobs:
           bash -n scripts/train_from_scratch_android.sh
           bash -n scripts/train_hybrid_android.sh
           bash -n scripts/update_android_debian.sh
+          bash -n scripts/check_github_updates.sh
 
       - name: Compile Python modules
         run: python -m compileall -q living_ai
