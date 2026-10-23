@@ -37,7 +37,7 @@ def test_submit_queues_but_does_not_execute(coordinator):
     prepared = loop.prepare("make a project note")
     ids = loop.submit_for_review(prepared)
     assert len(ids) == len(prepared.plan.steps)
-    assert all(item["status"] == "queued" for item in engine.list_goals())
+    assert all(item["status"] == "needs_approval" for item in engine.list_goals())
     assert engine.list_notes() == []
 
 
