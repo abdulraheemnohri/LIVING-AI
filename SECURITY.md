@@ -4,7 +4,7 @@
 
 - Bind to `127.0.0.1` by default.
 - Before exposing the service beyond localhost, set `LIVING_AI_ADMIN_PASSWORD` and put the app behind a suitable network access-control layer.
-- When the password is set, mutation endpoints that call the shared `auth()` guard require `X-Admin-Password: <password>`. When the password is empty, this password mechanism does not protect those endpoints.
+- Protected endpoints fail closed with HTTP 503 when `LIVING_AI_ADMIN_PASSWORD` is unset or empty. When configured, they require `X-Admin-Password: <password>` and reject incorrect passwords with HTTP 401.
 - Keep `.env`, SQLite databases, exported corpora, backups and model artifacts private.
 - Do not commit API keys or paste admin passwords into chats, screenshots or issue reports.
 
