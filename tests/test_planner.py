@@ -18,7 +18,7 @@ def test_submit_queues_without_execution(tmp_path):
     plan = planner.plan("Prepare a project outline.")
     ids = planner.submit_for_review(plan)
     assert len(ids) == 1
-    assert engine.list_goals()[0]["status"] == "queued"
+    assert engine.list_goals()[0]["status"] == "needs_approval"
     assert engine.list_notes() == []
 
 
