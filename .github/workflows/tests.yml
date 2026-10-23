@@ -54,6 +54,8 @@ jobs:
           bash -n scripts/train_hybrid_android.sh
           bash -n scripts/update_android_debian.sh
           bash -n scripts/check_github_updates.sh
+          bash -n scripts/enable_autostart.sh
+          bash -n scripts/disable_autostart.sh
 
       - name: Compile Python modules
         run: python -m compileall -q living_ai
