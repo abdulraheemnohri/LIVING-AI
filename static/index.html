@@ -39,6 +39,14 @@
       <div><div class="section-heading"><div><h3>Work board</h3><small>Filter by current status</small></div><select id="pm-status-filter" aria-label="Filter work items"><option value="all">All items</option><option value="todo">To do</option><option value="in_progress">In progress</option><option value="blocked">Blocked</option><option value="done">Done</option></select></div><div id="pm-work-list">Select a project to see its work items.</div></div>
     </div>
   </article>
+  <div class="split project-layout">
+    <article><div class="section-heading"><div><small>DELIVERY PLAN</small><h3>Milestones</h3></div><button id="pm-refresh-milestones" type="button" class="secondary">Refresh</button></div>
+      <p>Track major checkpoints for the selected project.</p>
+      <form id="pm-milestone-form"><input id="pm-milestone-id" type="hidden"><label>Milestone title</label><input id="pm-milestone-title" required maxlength="200" placeholder="e.g. Beta release"><label>Description</label><textarea id="pm-milestone-description" maxlength="2000" placeholder="What must be delivered?"></textarea><div class="split compact-fields"><div><label>Status</label><select id="pm-milestone-status"><option value="planned">Planned</option><option value="in_progress">In progress</option><option value="completed">Completed</option><option value="at_risk">At risk</option></select></div><div><label>Due date</label><input id="pm-milestone-due" type="date"></div></div><div class="button-row"><button id="pm-save-milestone">Add milestone</button><button id="pm-cancel-milestone" type="button" class="secondary hidden">Cancel</button></div></form>
+      <div id="pm-milestone-list"><p>Select a project to load milestones.</p></div>
+    </article>
+    <article><div class="section-heading"><div><small>CHANGE LOG</small><h3>Project activity</h3></div><button id="pm-refresh-activity" type="button" class="secondary">Refresh</button></div><div id="pm-activity-list"><p>Select a project to load activity.</p></div></article>
+  </div>
   <article><small>WORKSPACE DATA</small><p>Projects and work items are stored in your configured LIVING-AI data directory in <code>projects.sqlite3</code>. Project deletion also deletes its work items. No shell commands or external services are executed by this management page.</p></article>
 </section>
 \n<section id="audit" class="view hidden"><article><h3>Audit trail</h3><div id="auditlist"></div></article></section>
