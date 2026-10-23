@@ -4,7 +4,7 @@ The Evaluation Lab runs eight fixed, offline regression cases against the config
 
 ## API
 
-All endpoints fail closed unless `LIVING_AI_ADMIN_TOKEN` is configured. Send `Authorization: Bearer <token>`.
+All endpoints fail closed unless `LIVING_AI_ADMIN_PASSWORD` is configured. Send `X-Admin-Password: <password>`.
 
 - `POST /api/evaluation/run` — execute the regression suite and persist the result in `evaluation_runs.sqlite3`.
 - `GET /api/evaluation/runs?limit=10` — retrieve recent run history (limit 1–50).
