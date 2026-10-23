@@ -190,3 +190,8 @@ This is a structural regression suite, not a semantic-quality benchmark. It does
 The Evaluation Lab now includes a persistent promotion gate. By default it requires three recent clean offline regression runs with 100% structural checks and blocks if history is insufficient, a run falls below threshold, result data is invalid, or the latest score regresses against the prior baseline. API: `POST /api/evaluation/gate/check?window=3&min_score=1.0`; history: `GET /api/evaluation/gate/history?limit=10`.
 
 A pass means eligible for human review only. It does not promote/deploy code, change model weights, approve goals, or enable execution. See [docs/PROMOTION_GATE.md](docs/PROMOTION_GATE.md).
+
+
+## Curated Learning Dataset Lab (Phase 13)
+
+Use the admin-protected Dataset Lab API to stage examples as **pending**, review them explicitly, and export only approved examples to `data/corpus/curated_training.jsonl`. It deduplicates identical input/output pairs, preserves Urdu/Unicode, bounds payload sizes, and never starts training automatically. See [docs/CURATED_DATASET_LAB.md](docs/CURATED_DATASET_LAB.md). The current from-scratch trainer consumes text files, so the JSONL export must be deliberately converted/adapted before training.
