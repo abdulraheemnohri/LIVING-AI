@@ -15,7 +15,7 @@ The worker adds durable controls around the existing goal queue. It is intention
 
 ## API
 
-All endpoints require `Authorization: Bearer <LIVING_AI_ADMIN_TOKEN>`; if the token is not configured, endpoints fail closed.
+All endpoints require `X-Admin-Password: <LIVING_AI_ADMIN_PASSWORD>`; if the password is not configured, endpoints fail closed.
 
 - `GET /api/worker/status` — controls, goal queue, recent runs, events, pending approvals.
 - `POST /api/worker/enable`, `/disable`, `/resume`, `/pause` — change persistent control state. Resume does not start a daemon.
