@@ -65,3 +65,24 @@ def test_project_import_rejects_wrong_format(client):
     h={"X-Admin-Password":"project-test-password"}
     response=client.post("/api/projects/import",headers=h,json={"format":"wrong","version":1,"projects":[]})
     assert response.status_code==400
+
+def test_deleting_prerequisite_clears_dependent_task_link(client):
+    h={"X-Admin-Password":"project-test-password"}
+    p=client.post("/api/projects",headers=h,json={"name":"Dependency cleanup"})
+    assert p.status_code in (200,201), p.text
+    pid=p.json()["id"]
+    first=client.post(f"/api/projects/{pid}/items",headers=h,json={"title":"Prerequisite","status":"todo"})
+    assert first.status_code in (200,201), first.text
+    first_id=first.json()["id"]
+    second=client.post(f"/api/projects/{pid}/items",headers=h,json={"title":"Dependent","status":"todo","dependency_id":first_id})
+    assert second.status_code in (200,201), second.text
+    second_id=second.json()["id"]
+    deleted=client.delete(f"/api/projects/{pid}/items/{first_id}",headers=h)
+    assert deleted.status_code==200, deleted.text
+    items=client.get(f"/api/projects/{pid}/items",headers=h)
+    assert items.status_code==200, items.text
+    remaining=next(x for x in items.json()["items"] if x["id"]==second_id)
+    assert remaining["dependency_id"] is None
+    activity=client.get(f"/api/projects/{pid}/activity",headers=h)
+    assert activity.status_code==200, activity.text
+    assert any(x["action"]=="dependencies_cleared" for x in activity.json()["items"])
