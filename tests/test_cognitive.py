@@ -45,5 +45,5 @@ def test_submission_queues_without_execution(tmp_path):
     result = core.plan("Prepare a plan", allow_remote=True)
     ids = core.submit_for_review(result)
     assert len(ids) == 1
-    assert engine.list_goals()[0]["status"] == "queued"
+    assert engine.list_goals()[0]["status"] == "needs_approval"
     assert engine.list_notes() == []
