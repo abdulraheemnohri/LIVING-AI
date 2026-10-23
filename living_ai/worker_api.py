@@ -1,3 +1,4 @@
+import hmac
 """Admin-protected HTTP controls for the persistent manual evolution worker."""
 from __future__ import annotations
 
@@ -19,7 +20,7 @@ def _require_admin(request: Request) -> None:
     password = os.getenv("LIVING_AI_ADMIN_PASSWORD", "").strip()
     if not password:
         raise HTTPException(status_code=503, detail="Worker controls are locked: configure LIVING_AI_ADMIN_PASSWORD and restart")
-    if request.headers.get("x-admin-password", "") != password:
+    if not hmac.compare_digest(request.headers.get("x-admin-password", ""), password):
         raise HTTPException(status_code=401, detail="Valid admin password required")
 
 
