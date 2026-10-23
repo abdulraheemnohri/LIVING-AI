@@ -4,7 +4,7 @@ This module creates a human-reviewed dataset staging area for future local train
 
 ## Authentication
 
-Configure `LIVING_AI_ADMIN_TOKEN` in the private environment and send `Authorization: Bearer <token>`. All endpoints fail closed if the token is missing or incorrect.
+Configure `LIVING_AI_ADMIN_PASSWORD` in the private environment and send `X-Admin-Password: <password>`. All endpoints fail closed if the password is missing or incorrect.
 
 ## Workflow
 
