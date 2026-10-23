@@ -9,7 +9,7 @@ import living_ai.worker_api as worker_api
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("LIVING_AI_DATA_DIR", str(tmp_path))
-    monkeypatch.setenv("LIVING_AI_ADMIN_TOKEN", "test-admin-token")
+    monkeypatch.setenv("LIVING_AI_ADMIN_PASSWORD", "test-admin-password")
     monkeypatch.setenv("LIVING_AI_ALLOW_REMOTE_PROVIDER", "false")
     planner_api._engine = None
     planner_api._coordinator_instance = None
@@ -22,7 +22,7 @@ def client(tmp_path, monkeypatch):
 
 
 def test_evaluation_run_is_offline_bounded_and_persistent(client):
-    headers = {"Authorization": "Bearer test-admin-token"}
+    headers = {"X-Admin-Password": "test-admin-password"}
     response = client.post("/api/evaluation/run", headers=headers, json={})
     assert response.status_code == 201
     run = response.json()
@@ -38,6 +38,6 @@ def test_evaluation_run_is_offline_bounded_and_persistent(client):
 
 
 def test_evaluation_endpoints_fail_closed_without_admin_token(client, monkeypatch):
-    monkeypatch.delenv("LIVING_AI_ADMIN_TOKEN")
+    monkeypatch.delenv("LIVING_AI_ADMIN_PASSWORD")
     response = client.post("/api/evaluation/run", json={})
     assert response.status_code == 503
