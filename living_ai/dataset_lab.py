@@ -1,9 +1,9 @@
-import hmac
 """Human-reviewed training-example curation for the local learning pipeline.
 
 Only explicitly approved examples are exported. This module does not train models.
 """
 from __future__ import annotations
+import hmac
 
 import hashlib
 import json
