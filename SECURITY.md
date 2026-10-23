@@ -3,10 +3,10 @@
 ## Deployment
 
 - Bind to `127.0.0.1` by default.
-- Before exposing the service beyond localhost, set `LIVING_AI_ADMIN_TOKEN` and put the app behind a suitable network access-control layer.
-- When the token is set, mutation endpoints that call the shared `auth()` guard require `Authorization: Bearer <token>`. When the token is empty, this token mechanism does not protect those endpoints.
+- Before exposing the service beyond localhost, set `LIVING_AI_ADMIN_PASSWORD` and put the app behind a suitable network access-control layer.
+- When the password is set, mutation endpoints that call the shared `auth()` guard require `X-Admin-Password: <password>`. When the password is empty, this password mechanism does not protect those endpoints.
 - Keep `.env`, SQLite databases, exported corpora, backups and model artifacts private.
-- Do not commit API keys or paste admin tokens into chats, screenshots or issue reports.
+- Do not commit API keys or paste admin passwords into chats, screenshots or issue reports.
 
 ## Remote provider and privacy
 
@@ -34,14 +34,14 @@ Imported pages and files are untrusted data. Do not treat their content as privi
 - Do not enable background scheduling, unattended execution or automatic promotion unless the specific code path is present, reviewed and tested.
 - The application is not allowed to execute arbitrary shell commands, install packages autonomously or rewrite its source code.
 
-## Dashboard admin token
+## Dashboard admin password
 
-When configured, the dashboard sends the token for guarded writes and stores it in the current browser tab's `sessionStorage`; it should be cleared when that tab's session ends. Use a trusted device and do not share screenshots that expose the token.
+When configured, the dashboard sends the password for guarded writes and stores it in the current browser tab's `sessionStorage`; it should be cleared when that tab's session ends. Use a trusted device and do not share screenshots that expose the password.
 
 ## Verification checklist
 
 Before any non-local deployment:
-1. Configure a strong admin token and verify unauthenticated mutation requests fail.
+1. Configure a strong admin password and verify unauthenticated mutation requests fail.
 2. Review every registered route for authentication and data exposure.
 3. Run tests and lint in the target environment.
 4. Confirm logs do not expose secrets.
