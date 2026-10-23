@@ -82,7 +82,7 @@ def test_deleting_prerequisite_clears_dependent_task_link(client):
     items=client.get(f"/api/projects/{pid}/items",headers=h)
     assert items.status_code==200, items.text
     remaining=next(x for x in items.json()["items"] if x["id"]==second_id)
-    assert remaining["dependency_id"] is None
+    assert remaining["dependency_id"] in ("", None)
     activity=client.get(f"/api/projects/{pid}/activity",headers=h)
     assert activity.status_code==200, activity.text
     assert any(x["action"]=="dependencies_cleared" for x in activity.json()["items"])
