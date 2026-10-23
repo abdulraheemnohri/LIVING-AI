@@ -24,6 +24,8 @@ def init_db():
         for k,v in {"temperature":0.7,"max_reply_chars":1800,"retrieval_limit":5}.items():
             c.execute("INSERT OR IGNORE INTO settings VALUES(?,?,?)",(k,json.dumps(v),utcnow()))
 def audit(action,detail):
+    # Tests and standalone services may call audit before application startup.
+    init_db()
     with connect() as c: c.execute("INSERT INTO audit(action,detail_json,created_at) VALUES(?,?,?)",(action,json.dumps(detail),utcnow()))
 def get_settings():
     with connect() as c: rows=c.execute("SELECT key,value_json FROM settings").fetchall()
