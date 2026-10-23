@@ -230,7 +230,12 @@ def update_work_item(project_id: str, item_id: str, data: WorkItemInput, request
 def delete_work_item(project_id: str, item_id: str, request: Request) -> dict[str,Any]:
     _auth(request)
     with _db() as c:
-        cur=c.execute("DELETE FROM work_items WHERE id=? AND project_id=?",(item_id,project_id))
-        if not cur.rowcount: raise HTTPException(status_code=404,detail="Work item not found")
-        _log(c, project_id, "work_item_deleted", item_id)
+        row=c.execute("SELECT title FROM work_items WHERE id=? AND project_id=?",(item_id,project_id)).fetchone()
+        if not row: raise HTTPException(status_code=404,detail="Work item not found")
+        dependents=c.execute("SELECT id,title FROM work_items WHERE project_id=? AND dependency_id=?",(project_id,item_id)).fetchall()
+        c.execute("UPDATE work_items SET dependency_id=NULL,updated_at=? WHERE project_id=? AND dependency_id=?",(_now(),project_id,item_id))
+        if dependents:
+            _log(c, project_id, "dependencies_cleared", "Removed prerequisite "+row["title"]+"; cleared "+str(len(dependents))+" dependent task(s)")
+        c.execute("DELETE FROM work_items WHERE id=? AND project_id=?",(item_id,project_id))
+        _log(c, project_id, "work_item_deleted", row["title"])
     return {"deleted":True,"id":item_id}
