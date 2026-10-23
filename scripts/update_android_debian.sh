@@ -43,10 +43,10 @@ rollback() {
 trap rollback ERR
 
 git fetch --prune origin
-git merge-base --is-ancestor HEAD origin/main || {
+if ! git merge-base --is-ancestor HEAD origin/main; then
   echo "Local main is not an ancestor of origin/main; refusing a non-fast-forward update." >&2
-  false
-}
+  exit 1
+fi
 git merge --ff-only origin/main
 
 . .venv/bin/activate
