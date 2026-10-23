@@ -37,46 +37,10 @@
       button.disabled = false;
     }
   });
-  async function refreshGateHistory() {
-    try {
-      const data = await api("/api/evaluation/gate/history?limit=10");
-      $("#evaluation-gate-history").innerHTML = (data.items || []).map(item =>
-        '<div class="item"><b>' + esc(item.eligible ? "Eligible for human review" : "Blocked") +
-        '</b><p><small>' + esc(new Date(item.created_at * 1000).toLocaleString()) +
-        ' · window ' + esc(item.window_size) + ' · threshold ' +
-        esc(Math.round(item.min_score * 100)) + '%</small></p><details><summary>Decision details</summary><pre>' +
-        esc(JSON.stringify({reasons:item.reasons,recommendations:item.recommendations,run_ids:item.run_ids}, null, 2)) +
-        '</pre></details></div>'
-      ).join("") || "No gate decisions recorded yet.";
-    } catch (e) {
-      $("#evaluation-gate-history").textContent = e.message;
-    }
-  }
-  $("#evaluation-gate-check")?.addEventListener("click", async () => {
-    const button = $("#evaluation-gate-check");
-    button.disabled = true;
-    $("#evaluation-gate-result").textContent = "Assessing recent saved runs…";
-    try {
-      const result = await api("/api/evaluation/gate/check?window=3&min_score=1.0", {method:"POST", body:"{}"});
-      $("#evaluation-gate-status").textContent = result.eligible ? "Human review eligible" : "Blocked";
-      $("#evaluation-gate-count").textContent = result.runs_checked + " / " + result.window_size;
-      $("#evaluation-gate-result").textContent = JSON.stringify(result, null, 2);
-      note(result.eligible ? "Gate passed; human review still required" : "Gate blocked; inspect failed runs");
-      await refreshGateHistory();
-    } catch (e) {
-      $("#evaluation-gate-result").textContent = e.message;
-      note("Gate check failed");
-    } finally {
-      button.disabled = false;
-    }
-  });
-  $("#evaluation-refresh")?.addEventListener("click", async () => {
-    await refreshEvaluation();
-    await refreshGateHistory();
-  });
+  $("#evaluation-refresh")?.addEventListener("click", refreshEvaluation);
   const priorGo = go;
   go = function(v) {
     priorGo(v);
-    if (v === "evaluation") { refreshEvaluation(); refreshGateHistory(); }
+    if (v === "evaluation") refreshEvaluation();
   };
 })();

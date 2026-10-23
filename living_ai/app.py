@@ -10,23 +10,34 @@ from .db import init_db,connect,get_settings,data_dir
 from .memory import add_memory,search_memories,delete_memory
 from .engine import respond
 from .training import train_directory
+from .training_lab import list_datasets, ingest_dataset, prepare_teacher_corpus, training_history, approve_teacher_candidate, stage_for_training
 from .neural_training import train_small_transformer
 from .knowledge import parse_document, split_text, fetch_public_page
 from .evolution import create_proposal,list_proposals,evaluate,promote,rollback
 from .planner_api import planner_prepare,planner_proposals,planner_submit,planner_record_evaluation,planner_learning_summary
-from .evaluation_api import evaluation_run,evaluation_runs
-from .promotion_gate import evaluation_gate_check,evaluation_gate_history
 from .worker_api import worker_status,worker_resume,worker_pause,worker_enable,worker_disable,worker_configure,worker_tick,worker_approve_goal,worker_recommendations
+from .evaluation_api import evaluation_run,evaluation_runs
 ROOT=Path(__file__).resolve().parent.parent
 def auth(req):
+    """Fail closed: state-changing admin routes are unavailable until a token is configured."""
     token=os.getenv("LIVING_AI_ADMIN_TOKEN","").strip()
-    if token and req.headers.get("authorization","")!=f"Bearer {token}":raise HTTPException(status_code=401,detail="Bearer token required")
+    if not token:
+        raise HTTPException(status_code=503,detail="Admin routes are locked: configure LIVING_AI_ADMIN_TOKEN and restart")
+    if req.headers.get("authorization","")!=f"Bearer {token}":
+        raise HTTPException(status_code=401,detail="Valid admin bearer token required")
 class Chat(BaseModel): message:str=Field(min_length=1,max_length=20000)
 class Memory(BaseModel): content:str=Field(min_length=1,max_length=100000);source:str="manual"
 class FileIngest(BaseModel): filename:str=Field(min_length=1,max_length=255);content:str=Field(min_length=1,max_length=2_500_000)
 class URLIngest(BaseModel): url:str=Field(min_length=8,max_length=2048)
 class Proposal(BaseModel): title:str;changes:dict
 class Train(BaseModel): input_dir:str="data/corpus"
+class DatasetUpload(BaseModel):
+    filename:str=Field(min_length=1,max_length=255)
+    content:str=Field(min_length=1,max_length=2_000_000)
+    source:str=Field(default="manual-upload",max_length=100)
+class TeacherPrepare(BaseModel):
+    text:str=Field(min_length=1,max_length=12000)
+    count:int=Field(default=3,ge=1,le=8)
 class TrainScratch(BaseModel):
     input_dir:str="data/corpus"
     output_dir:str="models/tiny_transformer"
@@ -111,6 +122,48 @@ async def train(data:Train,request:Request) -> dict[str, Any]:
     auth(request)
     try:return train_directory(data.input_dir)
     except ValueError as e:raise HTTPException(status_code=400,detail=str(e))
+
+@get("/api/training/datasets")
+async def training_datasets() -> dict[str, Any]:
+    return {"items": list_datasets()}
+
+@post("/api/training/datasets")
+async def upload_training_dataset(data: DatasetUpload, request: Request) -> dict[str, Any]:
+    auth(request)
+    try:
+        return ingest_dataset(data.filename, data.content, data.source)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@post("/api/training/teacher-prepare")
+async def teacher_prepare(data: TeacherPrepare, request: Request) -> dict[str, Any]:
+    auth(request)
+    try:
+        return prepare_teacher_corpus(data.text, data.count)
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@post("/api/training/teacher-approve/{candidate_id:str}")
+async def teacher_approve(candidate_id: str, request: Request) -> dict[str, Any]:
+    auth(request)
+    try:
+        return approve_teacher_candidate(candidate_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@post("/api/training/stage/{kind:str}/{item_id:str}")
+async def stage_training_item(kind: str, item_id: str, request: Request) -> dict[str, Any]:
+    auth(request)
+    try:
+        return stage_for_training(item_id, kind)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@get("/api/training/history")
+async def training_runs() -> dict[str, Any]:
+    return {"items": training_history()}
+
 @get("/api/evolution/proposals")
 async def proposals() -> dict[str, Any]:return {"items":list_proposals()}
 @post("/api/evolution/proposals")
@@ -156,8 +209,10 @@ def train_scratch(data:TrainScratch,request:Request) -> dict[str, Any]:
 @get("/api/model/status")
 async def model_status() -> dict[str, Any]:
     backend=os.getenv("LIVING_AI_MODEL_BACKEND","char_ngram").strip().lower()
-    if backend not in {"char_ngram","tiny_transformer","from_scratch","native_transformer"}: backend="char_ngram"
+    allowed={"char_ngram","tiny_transformer","from_scratch","native_transformer","litert_lm","hybrid"}
+    if backend not in allowed: backend="char_ngram"
     tiny_dir=Path(os.getenv("LIVING_AI_TINY_MODEL_DIR","models/tiny_transformer"))
+    litert_path=Path(os.getenv("LIVING_AI_LITERTLM_MODEL_PATH","models/litert/gemma-4-E2B-it.litertlm")).expanduser()
     try:
         import torch
         torch_available=True
@@ -165,13 +220,29 @@ async def model_status() -> dict[str, Any]:
     except ImportError:
         torch_available=False
         torch_version=None
+    try:
+        import litert_lm
+        litert_available=True
+    except ImportError:
+        litert_available=False
     tiny=backend in {"tiny_transformer","from_scratch","native_transformer"}
-    ready=(torch_available and (tiny_dir/"config.json").is_file() and (tiny_dir/"weights.pt").is_file()) if tiny else True
-    return {"backend":backend,"model_id":"living-ai-from-scratch" if tiny else None,
-            "device":os.getenv("LIVING_AI_TINY_DEVICE","cpu") if tiny else "cpu",
-            "dependencies":{"torch":torch_available,"torch_version":torch_version},
-            "tiny_checkpoint_exists":(tiny_dir/"weights.pt").is_file(),"ready":ready,
-            "remote_provider_enabled":os.getenv("LIVING_AI_ALLOW_REMOTE_PROVIDER","false").lower()=="true"}
+    litert_model_exists=litert_path.is_file()
+    if tiny:
+        ready=torch_available and (tiny_dir/"config.json").is_file() and (tiny_dir/"weights.pt").is_file()
+    elif backend=="litert_lm":
+        ready=litert_available and litert_model_exists
+    else:
+        ready=True
+    return {
+        "backend":backend,
+        "model_id":"living-ai-from-scratch" if tiny else (str(litert_path) if backend in {"litert_lm","hybrid"} else None),
+        "device":os.getenv("LIVING_AI_LITERTLM_BACKEND","cpu") if backend in {"litert_lm","hybrid"} else (os.getenv("LIVING_AI_TINY_DEVICE","cpu") if tiny else "cpu"),
+        "dependencies":{"torch":torch_available,"torch_version":torch_version,"litert_lm":litert_available},
+        "tiny_checkpoint_exists":(tiny_dir/"weights.pt").is_file(),
+        "litert_model_exists":litert_model_exists,
+        "ready":ready,
+        "remote_provider_enabled":os.getenv("LIVING_AI_ALLOW_REMOTE_PROVIDER","false").lower()=="true"
+    }
 
 init_db()
-app=Litestar(route_handlers=[index,health,status,chat,memories,add,remove,ingest,ingest_file,ingest_url,export_corpus,train,proposals,propose,eval_route,promote_route,rollback_route,audit,settings,train_scratch,model_status,planner_prepare,planner_proposals,planner_submit,planner_record_evaluation,planner_learning_summary,worker_status,worker_resume,worker_pause,worker_enable,worker_disable,worker_configure,worker_tick,worker_approve_goal,worker_recommendations,evaluation_run,evaluation_runs,evaluation_gate_check,evaluation_gate_history],static_files_config=[StaticFilesConfig(path="/static",directories=[str(ROOT/"static")])],debug=False)
+app=Litestar(route_handlers=[index,health,status,chat,memories,add,remove,ingest,ingest_file,ingest_url,export_corpus,train,training_datasets,upload_training_dataset,teacher_prepare,teacher_approve,stage_training_item,training_runs,proposals,propose,eval_route,promote_route,rollback_route,audit,settings,train_scratch,model_status,planner_prepare,planner_proposals,planner_submit,planner_record_evaluation,planner_learning_summary,worker_status,worker_resume,worker_pause,worker_enable,worker_disable,worker_configure,worker_tick,worker_approve_goal,worker_recommendations,evaluation_run,evaluation_runs],static_files_config=[StaticFilesConfig(path="/static",directories=[str(ROOT/"static")])],debug=False)
