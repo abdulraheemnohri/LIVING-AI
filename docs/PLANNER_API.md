@@ -4,7 +4,7 @@ Phase 9 connects the review-first coordinator to the dashboard and persists prep
 
 ## Security and remote-provider behavior
 
-Every `/api/planner/*` route fails closed unless `LIVING_AI_ADMIN_TOKEN` is set. Requests must include `Authorization: Bearer <token>`. Remote planning is enabled only when both the request sets `allow_remote: true` and the server environment sets `LIVING_AI_ALLOW_REMOTE_PROVIDER=true`; otherwise planning remains deterministic/local. If enabled, goal text may be sent to the configured remote provider.
+Every `/api/planner/*` route fails closed unless `LIVING_AI_ADMIN_PASSWORD` is set. Requests must include `X-Admin-Password: <password>`. Remote planning is enabled only when both the request sets `allow_remote: true` and the server environment sets `LIVING_AI_ALLOW_REMOTE_PROVIDER=true`; otherwise planning remains deterministic/local. If enabled, goal text may be sent to the configured remote provider.
 
 ## Endpoints
 
