@@ -6,7 +6,13 @@ Last reviewed: 2026-10-23
 
 The supported update path is a **safe fast-forward update from `origin/main`** on the Android Debian/Linux checkout. It is deliberately not a silent background self-modifier: an AI process should not overwrite running code, ignore local edits, or promote untested changes.
 
-Run from the repository root:
+Run from the repository root. First check whether updates are available without changing the checked-out code:
+
+```bash
+bash scripts/check_github_updates.sh
+```
+
+When you are ready to apply an update, run:
 
 ```bash
 bash scripts/update_android_debian.sh
