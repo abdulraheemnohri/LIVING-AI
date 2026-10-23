@@ -19,13 +19,14 @@ from .worker_api import worker_status,worker_resume,worker_pause,worker_enable,w
 from .evaluation_api import evaluation_run,evaluation_runs
 from .promotion_gate import evaluation_gate_check,evaluation_gate_history
 from .dataset_lab import dataset_add_example,dataset_list_examples,dataset_review_example,dataset_export
+import hmac
 ROOT=Path(__file__).resolve().parent.parent
 def auth(req):
     """Fail closed: state-changing admin routes are unavailable until a token is configured."""
     password=os.getenv("LIVING_AI_ADMIN_PASSWORD","").strip()
     if not password:
         raise HTTPException(status_code=503,detail="Admin routes are locked: configure LIVING_AI_ADMIN_PASSWORD and restart")
-    if req.headers.get("x-admin-password","")!=password:
+    if not hmac.compare_digest(req.headers.get("x-admin-password",""), password):
         raise HTTPException(status_code=401,detail="Valid admin password required")
 class Chat(BaseModel): message:str=Field(min_length=1,max_length=20000)
 class Memory(BaseModel): content:str=Field(min_length=1,max_length=100000);source:str="manual"
