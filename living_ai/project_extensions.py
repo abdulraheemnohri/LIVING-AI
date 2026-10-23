@@ -5,13 +5,18 @@ from typing import Any
 from litestar import Request, get, post, patch, delete
 from litestar.exceptions import HTTPException
 from pydantic import BaseModel, Field
-from .project_api import _auth, _db, _now, _log
+from .project_api import _auth, _db, _now
+import sqlite3
 
 class MilestoneInput(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     description: str = Field(default="", max_length=2000)
     status: str = Field(default="planned", pattern="^(planned|in_progress|completed|at_risk)$")
     due_date: str = Field(default="", max_length=10)
+
+def _log(c, project_id: str, action: str, detail: str = "") -> None:
+    c.execute("INSERT INTO project_activity(project_id,action,detail,created_at) VALUES(?,?,?,?)",
+              (project_id, action, detail[:500], _now()))
 
 def _ensure(c) -> None:
     c.executescript("""
