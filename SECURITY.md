@@ -1,35 +1,51 @@
 # Security model
 
-- Bind to 127.0.0.1 by default.
-- Set LIVING_AI_ADMIN_TOKEN before exposing the server beyond localhost.
-- Mutation endpoints require bearer authentication when a token is configured.
-- Remote inference is opt-in and transmits prompts to the configured provider.
-- Evolution is restricted to an explicit settings allowlist.
-- No arbitrary command execution, package installation, or source-code self-rewriting is provided.
-- Keep .env, SQLite databases, backups, and model artifacts private.
-- Imported text is data only and is never executed.
+## Deployment
 
+- Bind to `127.0.0.1` by default.
+- Before exposing the service beyond localhost, set `LIVING_AI_ADMIN_TOKEN` and put the app behind a suitable network access-control layer.
+- When the token is set, mutation endpoints that call the shared `auth()` guard require `Authorization: Bearer <token>`. When the token is empty, this token mechanism does not protect those endpoints.
+- Keep `.env`, SQLite databases, exported corpora, backups and model artifacts private.
+- Do not commit API keys or paste admin tokens into chats, screenshots or issue reports.
 
-## Dashboard admin token
+## Remote provider and privacy
 
-If `LIVING_AI_ADMIN_TOKEN` is configured, write operations require an
-`Authorization: Bearer <token>` header. The dashboard Settings page lets you enter
-the token; it is stored in the current browser tab's `sessionStorage` and cleared
-when that tab's session ends. Do not paste the token into chat, source files, or
-screenshots. If the token is empty in `.env`, write endpoints are not protected by
-this token mechanism, so keep the service bound to localhost unless you configure
-authentication and review the deployment boundary.
+Remote inference is disabled unless `LIVING_AI_ALLOW_REMOTE_PROVIDER=true`. If enabled, user prompts are sent to the configured provider URL; review that provider's privacy, retention and terms before enabling it. Local LiteRT-LM inference does not need to send prompts to a remote inference provider, but downloading the model requires network access.
 
-## Model diagnostics
+## Model and training boundaries
 
-`GET /api/model/status` reports the configured backend, selected model ID, device,
-and whether the optional `torch` and `transformers` packages are importable. It
-does not load model weights or guarantee that enough RAM is available to generate.
-
-## From-scratch training boundary
-
-The dashboard's native-model trainer reads from the configured data directory's corpus folder and writes only to the repository's models/tiny_transformer folder. Dashboard training inputs have conservative step, batch, sequence, width, and layer limits; CLI training remains more configurable. Training can still consume substantial CPU and memory, so use a small configuration on mobile hardware. The checkpoint is a local state dictionary, not an artifact to download from untrusted sources.
+- Model B is the pre-converted Gemma 4 E2B Instruct LiteRT-LM artifact. LiteRT-LM is an inference runtime, not the model's training framework.
+- The repository does not yet implement a tested Model B fine-tuning/evaluation/conversion pipeline.
+- Existing n-gram training and the optional tiny from-scratch Transformer trainer are separate legacy features; neither fine-tunes Gemma.
+- Model status checks dependency imports and file presence; it does not load weights, prove generation works or guarantee sufficient RAM.
+- Review licensing and provenance of every training corpus. Do not train on data you are not authorized to use.
 
 ## Knowledge import
 
-The mobile importer accepts TXT, Markdown and JSON text files up to 2 MB and stores extracted text in local memory. Public webpage import is user-initiated, accepts only text-oriented content types, limits response size, blocks obvious non-public destinations, and does not follow redirects. This is a best-effort defense, not a hardened general-purpose browser; keep the server bound to localhost and use an admin token before network exposure. Treat imported pages as untrusted data. Importing online content does not automatically train model weights.
+The importer accepts TXT, Markdown and JSON text files up to the configured limit. Public webpage import is user-initiated, accepts text-oriented content, caps response size, blocks obvious non-public destinations and avoids following redirects. This is best-effort protection, not a hardened browser or a complete network sandbox. Keep the service local unless you have reviewed the threat model.
+
+Imported pages and files are untrusted data. Do not treat their content as privileged instructions or execute embedded code. Imported memory is not automatically training data; the explicit corpus-export operation must be reviewed before training.
+
+## Evolution and autonomy
+
+- Settings evolution is restricted to an explicit allowlist and records proposals/evaluations/snapshots for rollback.
+- The autonomy foundation is registered-action-based. Unknown and non-reversible actions must remain blocked or held for review.
+- Human review eligibility is not the same as approval, execution or successful deployment.
+- Do not enable background scheduling, unattended execution or automatic promotion unless the specific code path is present, reviewed and tested.
+- The application is not allowed to execute arbitrary shell commands, install packages autonomously or rewrite its source code.
+
+## Dashboard admin token
+
+When configured, the dashboard sends the token for guarded writes and stores it in the current browser tab's `sessionStorage`; it should be cleared when that tab's session ends. Use a trusted device and do not share screenshots that expose the token.
+
+## Verification checklist
+
+Before any non-local deployment:
+1. Configure a strong admin token and verify unauthenticated mutation requests fail.
+2. Review every registered route for authentication and data exposure.
+3. Run tests and lint in the target environment.
+4. Confirm logs do not expose secrets.
+5. Check upload limits, URL-import behavior and database file permissions.
+6. Test rollback and backup restore.
+7. Confirm remote inference is disabled unless explicitly approved.
+8. Verify LiteRT-LM model path, runtime API compatibility and fallback behavior.

@@ -89,6 +89,15 @@ class AutonomyEngine:
             results.append({"goal_id":goal["id"],"title":goal["title"],"status":status,"outcome":outcome,"detail":detail})
         return results
 
+    def require_approval(self, goal_id):
+        """Move a queued goal into the held state before any execution cycle can see it."""
+        with self._db() as db:
+            cur = db.execute(
+                "UPDATE goals SET status='needs_approval',updated_at=? WHERE id=? AND status='queued'",
+                (time.time(), goal_id),
+            )
+        return cur.rowcount == 1
+
     def approve_goal(self, goal_id):
         """Release a held goal for a single retry; unknown actions still cannot execute."""
         with self._db() as db:
