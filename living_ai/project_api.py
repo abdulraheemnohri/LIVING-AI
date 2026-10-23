@@ -32,11 +32,16 @@ def _db():
       title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'todo',
       priority TEXT NOT NULL DEFAULT 'medium', due_date TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS project_activity(
+      id INTEGER PRIMARY KEY AUTOINCREMENT, project_id TEXT NOT NULL,
+      action TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL);
     """)
     c.execute("PRAGMA foreign_keys=ON")
     return c
 
 def _now(): return datetime.now(timezone.utc).isoformat(timespec="seconds")
+def _log(c, project_id: str, action: str, detail: str = "") -> None:
+    c.execute("INSERT INTO project_activity(project_id,action,detail,created_at) VALUES(?,?,?,?)", (project_id, action, detail[:500], _now()))
 def _row(r): return dict(r) if r else None
 
 class ProjectInput(BaseModel):
@@ -74,6 +79,7 @@ def create_project(data: ProjectInput, request: Request) -> dict[str,Any]:
     _auth(request); now=_now(); pid=uuid.uuid4().hex[:12]
     with _db() as c:
         c.execute("INSERT INTO projects(id,name,description,status,priority,due_date,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)",(pid,data.name.strip(),data.description,data.status,data.priority,data.due_date,now,now))
+        _log(c, pid, "project_created", data.name.strip())
         return dict(c.execute("SELECT * FROM projects WHERE id=?",(pid,)).fetchone())
 
 @patch("/api/projects/{project_id:str}", sync_to_thread=True)
@@ -82,6 +88,7 @@ def update_project(project_id: str, data: ProjectInput, request: Request) -> dic
     with _db() as c:
         cur=c.execute("UPDATE projects SET name=?,description=?,status=?,priority=?,due_date=?,updated_at=? WHERE id=?",(data.name.strip(),data.description,data.status,data.priority,data.due_date,now,project_id))
         if not cur.rowcount: raise HTTPException(status_code=404,detail="Project not found")
+        _log(c, project_id, "project_updated", data.name.strip() + " [" + data.status + "]")
         return dict(c.execute("SELECT * FROM projects WHERE id=?",(project_id,)).fetchone())
 
 @delete("/api/projects/{project_id:str}", status_code=200, sync_to_thread=True)
@@ -91,6 +98,7 @@ def delete_project(project_id: str, request: Request) -> dict[str,Any]:
         c.execute("PRAGMA foreign_keys=ON")
         cur=c.execute("DELETE FROM projects WHERE id=?",(project_id,))
         if not cur.rowcount: raise HTTPException(status_code=404,detail="Project not found")
+        _log(c, project_id, "project_deleted", project_id)
     return {"deleted":True,"id":project_id}
 
 @get("/api/projects/{project_id:str}/items", sync_to_thread=True)
@@ -107,6 +115,7 @@ def create_work_item(project_id: str, data: WorkItemInput, request: Request) -> 
     with _db() as c:
         if not c.execute("SELECT 1 FROM projects WHERE id=?",(project_id,)).fetchone(): raise HTTPException(status_code=404,detail="Project not found")
         c.execute("INSERT INTO work_items(id,project_id,title,description,status,priority,due_date,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)",(wid,project_id,data.title.strip(),data.description,data.status,data.priority,data.due_date,now,now))
+        _log(c, project_id, "work_item_created", data.title.strip())
         return dict(c.execute("SELECT * FROM work_items WHERE id=?",(wid,)).fetchone())
 
 @patch("/api/projects/{project_id:str}/items/{item_id:str}", sync_to_thread=True)
@@ -115,6 +124,7 @@ def update_work_item(project_id: str, item_id: str, data: WorkItemInput, request
     with _db() as c:
         cur=c.execute("UPDATE work_items SET title=?,description=?,status=?,priority=?,due_date=?,updated_at=? WHERE id=? AND project_id=?",(data.title.strip(),data.description,data.status,data.priority,data.due_date,now,item_id,project_id))
         if not cur.rowcount: raise HTTPException(status_code=404,detail="Work item not found")
+        _log(c, project_id, "work_item_updated", data.title.strip() + " [" + data.status + "]")
         return dict(c.execute("SELECT * FROM work_items WHERE id=?",(item_id,)).fetchone())
 
 @delete("/api/projects/{project_id:str}/items/{item_id:str}", status_code=200, sync_to_thread=True)
@@ -123,4 +133,5 @@ def delete_work_item(project_id: str, item_id: str, request: Request) -> dict[st
     with _db() as c:
         cur=c.execute("DELETE FROM work_items WHERE id=? AND project_id=?",(item_id,project_id))
         if not cur.rowcount: raise HTTPException(status_code=404,detail="Work item not found")
+        _log(c, project_id, "work_item_deleted", item_id)
     return {"deleted":True,"id":item_id}
