@@ -4,7 +4,7 @@ The regression gate reviews **saved offline Evaluation Lab runs**. It is deliber
 
 ## API
 
-All endpoints fail closed unless `LIVING_AI_ADMIN_TOKEN` is configured. Send `Authorization: Bearer <token>`.
+All endpoints fail closed unless `LIVING_AI_ADMIN_PASSWORD` is configured. Send `X-Admin-Password: <password>`.
 
 - `POST /api/evaluation/gate/check?window=3&min_score=1.0` — assess recent run history and persist a decision.
 - `GET /api/evaluation/gate/history?limit=10` — retrieve previous decisions.
