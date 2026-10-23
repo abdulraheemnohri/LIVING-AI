@@ -26,11 +26,11 @@ def lifecycle() -> TaskLifecycle:
 
 
 def require_admin(request: Request) -> None:
-    token = os.getenv("LIVING_AI_ADMIN_TOKEN", "").strip()
-    if not token:
-        raise HTTPException(status_code=503, detail="Task controls are locked: set LIVING_AI_ADMIN_TOKEN and restart the server")
-    if request.headers.get("authorization", "") != f"Bearer {token}":
-        raise HTTPException(status_code=401, detail="Valid admin bearer token required")
+    password = os.getenv("LIVING_AI_ADMIN_PASSWORD", "").strip()
+    if not password:
+        raise HTTPException(status_code=503, detail="Task controls are locked: set LIVING_AI_ADMIN_PASSWORD and restart the server")
+    if request.headers.get("x-admin-password", "") != password:
+        raise HTTPException(status_code=401, detail="Valid admin password required")
 
 
 class TaskSubmission(BaseModel):
