@@ -43,6 +43,7 @@ jobs:
           node --check static/app.js
           node --check static/planner.js
           node --check static/worker.js
+          node --check static/tasks.js
           node --check static/evaluation.js
 
       - name: Compile Python modules
