@@ -22,6 +22,16 @@ bash scripts/run.sh
 
 Open http://127.0.0.1:8000 in a browser. The server binds to localhost by default.
 
+## Start automatically with your Linux session
+
+After the app runs successfully once, configure startup:
+
+```bash
+bash scripts/enable_autostart.sh
+```
+
+On Linux environments with a working systemd user manager, this installs a user service. On Android Debian containers without systemd, it creates a helper and explains how to connect it to the terminal app's startup feature. Device-boot startup depends on host-app support and cannot be guaranteed from inside every Android container. See [Automatic startup guide](docs/AUTOSTART.md). Disable with `bash scripts/disable_autostart.sh`.
+
 ## Update an existing installation
 
 From the repository directory, run:
