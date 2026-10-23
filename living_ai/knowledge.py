@@ -66,13 +66,27 @@ def _assert_public_http_url(url: str) -> urllib.parse.ParseResult:
     parsed = urllib.parse.urlparse(url)
     if parsed.scheme not in {"http", "https"} or not parsed.hostname:
         raise ValueError("Only absolute http:// or https:// URLs are supported")
-    if parsed.username or parsed.password:
+    if parsed.username is not None or parsed.password is not None:
         raise ValueError("URLs containing usernames/passwords are not allowed")
-    host = parsed.hostname.lower()
+    host = parsed.hostname.lower().rstrip(".")
+    if not host or any(ord(char) < 33 for char in host):
+        raise ValueError("Invalid website hostname")
+    try:
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    except ValueError as exc:
+        raise ValueError("Invalid website port") from exc
+    if not 1 <= port <= 65535:
+        raise ValueError("Invalid website port")
     if host in {"localhost", "localhost.localdomain"} or host.endswith(".local"):
         raise ValueError("Local hostnames are not allowed")
     try:
-        addresses = {item[4][0] for item in socket.getaddrinfo(host, parsed.port or (443 if parsed.scheme == "https" else 80), type=socket.SOCK_STREAM)}
+        try:
+            literal_ip = ipaddress.ip_address(host)
+        except ValueError:
+            literal_ip = None
+        if literal_ip is not None and not literal_ip.is_global:
+            raise ValueError("Private, loopback, link-local and non-public IP addresses are blocked")
+        addresses = {item[4][0] for item in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)}
     except OSError as exc:
         raise ValueError(f"Could not resolve website hostname: {exc}") from exc
     if not addresses:
