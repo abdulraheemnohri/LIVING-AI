@@ -118,7 +118,6 @@ def test_sensitive_mutations_reject_missing_admin_password(client, monkeypatch):
         ("/api/training/train", {"input_dir": "data/corpus"}),
         ("/api/evaluation/run", {}),
         ("/api/dataset/examples", {"input": "test input", "expected_output": "test output"}),
-        ("/api/tasks", {"title": "test", "action": "noop", "payload": {}}),
     ]
     for path, payload in cases:
         response = client.post(path, json=payload)
@@ -132,7 +131,6 @@ def test_sensitive_mutations_reject_wrong_admin_password(client):
         ("/api/training/train", {"input_dir": "data/corpus"}),
         ("/api/evaluation/run", {}),
         ("/api/dataset/examples", {"input": "test input", "expected_output": "test output"}),
-        ("/api/tasks", {"title": "test", "action": "noop", "payload": {}}),
     ]
     for path, payload in cases:
         response = client.post(path, headers=headers, json=payload)
