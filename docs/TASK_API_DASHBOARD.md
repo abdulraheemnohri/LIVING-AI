@@ -4,7 +4,7 @@ Phase 8 exposes the existing bounded task lifecycle to the local dashboard.
 
 ## Security
 
-All `/api/tasks` routes require `LIVING_AI_ADMIN_TOKEN`. If it is unset, these endpoints fail closed with HTTP 503; a wrong or missing bearer token returns HTTP 401. Configure a strong token in the private environment file and restart the server. The dashboard uses the token already stored for the current browser tab in Settings. Do not expose this server publicly without TLS and a reviewed network access policy.
+All `/api/tasks` routes require `LIVING_AI_ADMIN_PASSWORD`. If it is unset, these endpoints fail closed with HTTP 503; a wrong or missing password returns HTTP 401. Configure a strong password in the private environment file and restart the server. The dashboard uses the password already stored for the current browser tab in Settings. Do not expose this server publicly without TLS and a reviewed network access policy.
 
 ## Endpoints
 
