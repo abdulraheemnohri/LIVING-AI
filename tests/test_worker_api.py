@@ -67,3 +67,23 @@ def test_worker_controls_require_admin_token(client, monkeypatch):
     monkeypatch.delenv("LIVING_AI_ADMIN_TOKEN")
     response = client.post("/api/worker/resume", json={})
     assert response.status_code == 503
+
+def test_private_read_endpoints_fail_closed_without_admin_token(client, monkeypatch):
+    monkeypatch.delenv("LIVING_AI_ADMIN_TOKEN")
+    paths = [
+        "/api/status",
+        "/api/model/status",
+        "/api/memories",
+        "/api/training/datasets",
+        "/api/training/history",
+        "/api/evolution/proposals",
+        "/api/audit",
+        "/api/settings",
+        "/api/worker/status",
+        "/api/evaluation/runs",
+        "/api/evaluation/gate/history",
+        "/api/dataset/examples",
+    ]
+    for path in paths:
+        response = client.get(path)
+        assert response.status_code == 503, f"{path} returned {response.status_code}"
