@@ -106,7 +106,7 @@ For a character n-gram model, training updates statistical counts and cannot dir
 - `LIVING_AI_LITERTLM_MODEL_PATH`: Model B artifact.
 - `LIVING_AI_LITERTLM_BACKEND`: runtime backend, start with CPU.
 - `LIVING_AI_DATA_DIR`: local SQLite/data directory.
-- `LIVING_AI_ADMIN_TOKEN`: token for guarded mutations; set before network exposure.
+- `LIVING_AI_ADMIN_PASSWORD`: password for guarded mutations; set before network exposure.
 - `LIVING_AI_ALLOW_REMOTE_PROVIDER`: remote provider opt-in, false by default.
 - `LIVING_AI_AUTO_PROMOTE`: promotion flag, false by default.
 
@@ -136,7 +136,7 @@ Any additional dataset, teacher-assist or training-job settings should be added 
 ### Model B
 - [ ] Verify installed LiteRT-LM API compatibility with the adapter.
 - [ ] Load Gemma artifact and generate a real response.
-- [ ] Verify output token limits, timeout and clear failure states.
+- [ ] Verify output password limits, timeout and clear failure states.
 - [ ] Measure latency and peak RAM on the target Android device.
 - [ ] Confirm Model B is only used for inference/teacher assistance, not claimed to be self-trained.
 
