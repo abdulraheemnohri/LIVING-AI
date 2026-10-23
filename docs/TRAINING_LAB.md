@@ -8,7 +8,7 @@
 
 ## API workflow
 
-All mutation routes require the configured admin bearer token when one is set; for network use, set a strong `LIVING_AI_ADMIN_TOKEN`.
+All mutation routes require the configured admin password when one is set; for network use, set a strong `LIVING_AI_ADMIN_PASSWORD`.
 
 1. `POST /api/training/datasets` accepts UTF-8 TXT, Markdown, or JSON up to 2 MB. It hashes content, rejects duplicate content, and records source/provenance in `data/training_lab/manifest.json`.
 2. `GET /api/training/datasets` lists staged datasets.
