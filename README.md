@@ -164,4 +164,29 @@ See [docs/EVOLUTION_LOOP.md](docs/EVOLUTION_LOOP.md). Tests are in `tests/test_c
 
 ## Persistent AI Planner dashboard (review-first)
 
-The AI Planner can prepare bounded plans, persist them for inspection, submit supported `save_note` steps to the review queue, and record explicit human/caller evaluation feedback. It does not execute a plan during preparation or submission. Admin routes require `LIVING_AI_ADMIN_TOKEN`. Remote planning additionally requires request-level opt-in and `LIVING_AI_ALLOW_REMOTE_PROVIDER=true`. See `docs/PLANNER_API.md`.
+See [docs/EVOLUTION_LOOP.md](docs/EVOLUTION_LOOP.md). Tests are in
+`tests/test_coordinator.py`.
+
+
+## Persistent AI Planner dashboard (Phase 9)
+
+The **AI Planner** view exposes the review-first evolution coordinator. Prepare a bounded plan with relevant past evaluations, inspect and persist it, submit it once to the registered-action queue, and record explicit human/caller outcome feedback. Planner endpoints require `LIVING_AI_ADMIN_TOKEN`. Remote planning requires both request-level opt-in and `LIVING_AI_ALLOW_REMOTE_PROVIDER=true`; if enabled, the goal is sent to the configured remote provider. Preparing or submitting a plan never runs an execution cycle. See [docs/PLANNER_API.md](docs/PLANNER_API.md).
+
+
+## Controlled Evolution Worker (Phase 10)
+
+The Worker Control dashboard provides persistent enable/disable and pause/resume state, bounded manual ticks, per-goal approvals, recent execution history, and deterministic recommendations from explicitly reviewed outcomes. There is no background worker or automatic execution loop. Newly submitted planner steps are held in `needs_approval` until individually approved. See [docs/CONTROLLED_WORKER.md](docs/CONTROLLED_WORKER.md).
+
+
+## Offline Evaluation Lab (Phase 11)
+
+The **Evaluation Lab** runs eight fixed regression cases against the deterministic planner and persists run history in SQLite. It checks bounded step counts, preserved goals, explicit review requirements, action allowlisting, payload limits, and Unicode input handling. Open the Evaluation Lab dashboard page or use `POST /api/evaluation/run`; inspect history with `GET /api/evaluation/runs`. Both endpoints require `LIVING_AI_ADMIN_TOKEN`.
+
+This is a structural regression suite, not a semantic-quality benchmark. It does not invoke remote models, train weights, approve plans, or execute actions. See [docs/EVALUATION_LAB.md](docs/EVALUATION_LAB.md).
+
+
+## Adaptive Learning & Regression Gate (Phase 12)
+
+The Evaluation Lab now includes a persistent promotion gate. By default it requires three recent clean offline regression runs with 100% structural checks and blocks if history is insufficient, a run falls below threshold, result data is invalid, or the latest score regresses against the prior baseline. API: `POST /api/evaluation/gate/check?window=3&min_score=1.0`; history: `GET /api/evaluation/gate/history?limit=10`.
+
+A pass means eligible for human review only. It does not promote/deploy code, change model weights, approve goals, or enable execution. See [docs/PROMOTION_GATE.md](docs/PROMOTION_GATE.md).
