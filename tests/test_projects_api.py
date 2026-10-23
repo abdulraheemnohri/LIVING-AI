@@ -37,3 +37,31 @@ def test_project_management_fails_closed_without_password(client,monkeypatch):
 def test_project_management_rejects_invalid_status(client):
     response=client.post("/api/projects",headers={"X-Admin-Password":"project-test-password"},json={"name":"Bad status","status":"executed"})
     assert response.status_code==400
+
+def test_project_backup_export_and_import(client):
+    h={"X-Admin-Password":"project-test-password"}
+    p=client.post("/api/projects",headers=h,json={"name":"Backup sample","description":"portable backup"})
+    assert p.status_code in (200,201), p.text
+    pid=p.json()["id"]
+    m=client.post(f"/api/projects/{pid}/milestones",headers=h,json={"title":"Beta","status":"planned"})
+    assert m.status_code in (200,201), m.text
+    w=client.post(f"/api/projects/{pid}/items",headers=h,json={"title":"First task","status":"todo","milestone_id":m.json()["id"]})
+    assert w.status_code in (200,201), w.text
+    backup=client.get("/api/projects/export",headers=h)
+    assert backup.status_code==200, backup.text
+    payload=backup.json()
+    assert payload["format"]=="living-ai-projects"
+    assert len(payload["projects"])==1 and len(payload["milestones"])==1 and len(payload["work_items"])==1
+    restored=client.post("/api/projects/import",headers=h,json=payload)
+    assert restored.status_code in (200,201), restored.text
+    assert restored.json()["projects"]==1
+    assert restored.json()["milestones"]==1
+    assert restored.json()["work_items"]==1
+    listing=client.get("/api/projects",headers=h)
+    assert listing.status_code==200
+    assert listing.json()["summary"]["projects"]==2
+
+def test_project_import_rejects_wrong_format(client):
+    h={"X-Admin-Password":"project-test-password"}
+    response=client.post("/api/projects/import",headers=h,json={"format":"wrong","version":1,"projects":[]})
+    assert response.status_code==400
