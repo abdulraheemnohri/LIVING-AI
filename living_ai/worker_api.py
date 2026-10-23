@@ -1,6 +1,6 @@
-import hmac
 """Admin-protected HTTP controls for the persistent manual evolution worker."""
 from __future__ import annotations
+import hmac
 
 import os
 from typing import Any
