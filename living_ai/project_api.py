@@ -33,6 +33,10 @@ def _db():
       priority TEXT NOT NULL DEFAULT 'medium', due_date TEXT NOT NULL DEFAULT '',
       dependency_id TEXT NOT NULL DEFAULT '', milestone_id TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS milestones(
+      id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'planned',
+      due_date TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS project_activity(
       id INTEGER PRIMARY KEY AUTOINCREMENT, project_id TEXT NOT NULL,
       action TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL);
