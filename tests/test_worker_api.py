@@ -63,12 +63,12 @@ def test_planner_goals_require_approval_before_worker_can_execute(client):
     assert any(result["goal_id"] == goal_id and result["status"] == "completed" for result in tick.json()["results"])
 
 
-def test_worker_controls_require_admin_token(client, monkeypatch):
+def test_worker_controls_require_admin_password(client, monkeypatch):
     monkeypatch.delenv("LIVING_AI_ADMIN_PASSWORD")
     response = client.post("/api/worker/resume", json={})
     assert response.status_code == 503
 
-def test_private_read_endpoints_fail_closed_without_admin_token(client, monkeypatch):
+def test_private_read_endpoints_fail_closed_without_admin_password(client, monkeypatch):
     monkeypatch.delenv("LIVING_AI_ADMIN_PASSWORD")
     paths = [
         "/api/status",
@@ -89,7 +89,7 @@ def test_private_read_endpoints_fail_closed_without_admin_token(client, monkeypa
         assert response.status_code == 503, f"{path} returned {response.status_code}"
 
 
-def test_private_read_endpoints_reject_incorrect_admin_token(client):
+def test_private_read_endpoints_reject_incorrect_admin_password(client):
     paths = [
         "/api/status",
         "/api/model/status",
@@ -107,4 +107,33 @@ def test_private_read_endpoints_reject_incorrect_admin_token(client):
     headers = {"X-Admin-Password": "definitely-wrong-password"}
     for path in paths:
         response = client.get(path, headers=headers)
+        assert response.status_code == 401, f"{path} returned {response.status_code}"
+
+
+
+def test_sensitive_mutations_reject_missing_admin_password(client, monkeypatch):
+    monkeypatch.delenv("LIVING_AI_ADMIN_PASSWORD")
+    cases = [
+        ("/api/knowledge/ingest", {"content": "private data", "source": "test"}),
+        ("/api/training/train", {"input_dir": "data/corpus"}),
+        ("/api/evaluation/run", {}),
+        ("/api/dataset/examples", {"input": "test input", "expected_output": "test output"}),
+        ("/api/tasks", {"title": "test", "action": "noop", "payload": {}}),
+    ]
+    for path, payload in cases:
+        response = client.post(path, json=payload)
+        assert response.status_code == 503, f"{path} returned {response.status_code}"
+
+
+def test_sensitive_mutations_reject_wrong_admin_password(client):
+    headers = {"X-Admin-Password": "definitely-wrong-password"}
+    cases = [
+        ("/api/knowledge/ingest", {"content": "private data", "source": "test"}),
+        ("/api/training/train", {"input_dir": "data/corpus"}),
+        ("/api/evaluation/run", {}),
+        ("/api/dataset/examples", {"input": "test input", "expected_output": "test output"}),
+        ("/api/tasks", {"title": "test", "action": "noop", "payload": {}}),
+    ]
+    for path, payload in cases:
+        response = client.post(path, headers=headers, json=payload)
         assert response.status_code == 401, f"{path} returned {response.status_code}"
