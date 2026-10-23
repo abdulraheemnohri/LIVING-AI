@@ -84,7 +84,7 @@ def update_project(project_id: str, data: ProjectInput, request: Request) -> dic
         if not cur.rowcount: raise HTTPException(status_code=404,detail="Project not found")
         return dict(c.execute("SELECT * FROM projects WHERE id=?",(project_id,)).fetchone())
 
-@delete("/api/projects/{project_id:str}", sync_to_thread=True)
+@delete("/api/projects/{project_id:str}", status_code=200, sync_to_thread=True)
 def delete_project(project_id: str, request: Request) -> dict[str,Any]:
     _auth(request)
     with _db() as c:
@@ -117,7 +117,7 @@ def update_work_item(project_id: str, item_id: str, data: WorkItemInput, request
         if not cur.rowcount: raise HTTPException(status_code=404,detail="Work item not found")
         return dict(c.execute("SELECT * FROM work_items WHERE id=?",(item_id,)).fetchone())
 
-@delete("/api/projects/{project_id:str}/items/{item_id:str}", sync_to_thread=True)
+@delete("/api/projects/{project_id:str}/items/{item_id:str}", status_code=200, sync_to_thread=True)
 def delete_work_item(project_id: str, item_id: str, request: Request) -> dict[str,Any]:
     _auth(request)
     with _db() as c:
