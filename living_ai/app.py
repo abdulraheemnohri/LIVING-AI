@@ -66,7 +66,9 @@ async def chat(data:Chat) -> dict[str, Any]:
     try:return respond(data.message)
     except ValueError as e:raise HTTPException(status_code=400,detail=str(e))
 @get("/api/memories")
-async def memories(q:str="",limit:int=20) -> dict[str, Any]:return {"items":search_memories(q,limit)}
+async def memories(request: Request, q:str="",limit:int=20) -> dict[str, Any]:
+    auth(request)
+    return {"items":search_memories(q,limit)}
 @post("/api/memories")
 async def add(data:Memory,request:Request) -> dict[str, Any]:
     auth(request)
@@ -126,7 +128,8 @@ async def train(data:Train,request:Request) -> dict[str, Any]:
     except ValueError as e:raise HTTPException(status_code=400,detail=str(e))
 
 @get("/api/training/datasets")
-async def training_datasets() -> dict[str, Any]:
+async def training_datasets(request: Request) -> dict[str, Any]:
+    auth(request)
     return {"items": list_datasets()}
 
 @post("/api/training/datasets")
@@ -163,11 +166,14 @@ async def stage_training_item(kind: str, item_id: str, request: Request) -> dict
         raise HTTPException(status_code=400, detail=str(e))
 
 @get("/api/training/history")
-async def training_runs() -> dict[str, Any]:
+async def training_runs(request: Request) -> dict[str, Any]:
+    auth(request)
     return {"items": training_history()}
 
 @get("/api/evolution/proposals")
-async def proposals() -> dict[str, Any]:return {"items":list_proposals()}
+async def proposals(request: Request) -> dict[str, Any]:
+    auth(request)
+    return {"items":list_proposals()}
 @post("/api/evolution/proposals")
 async def propose(data:Proposal,request:Request) -> dict[str, Any]:
     auth(request)
@@ -189,11 +195,14 @@ async def rollback_route(request:Request) -> dict[str, Any]:
     try:return rollback()
     except ValueError as e:raise HTTPException(status_code=400,detail=str(e))
 @get("/api/audit")
-async def audit(limit:int=50) -> dict[str, Any]:
+async def audit(request: Request, limit:int=50) -> dict[str, Any]:
+    auth(request)
     with connect() as c:rows=c.execute("SELECT * FROM audit ORDER BY id DESC LIMIT ?",(max(1,min(limit,200)),)).fetchall()
     return {"items":[{"id":r["id"],"action":r["action"],"detail":json.loads(r["detail_json"]),"created_at":r["created_at"]} for r in rows]}
 @get("/api/settings")
-async def settings() -> dict[str, Any]:return {"settings":get_settings(),"auto_promote":os.getenv("LIVING_AI_AUTO_PROMOTE","false").lower()=="true"}
+async def settings(request: Request) -> dict[str, Any]:
+    auth(request)
+    return {"settings":get_settings(),"auto_promote":os.getenv("LIVING_AI_AUTO_PROMOTE","false").lower()=="true"}
 
 @post("/api/training/train-from-scratch", sync_to_thread=True)
 def train_scratch(data:TrainScratch,request:Request) -> dict[str, Any]:
