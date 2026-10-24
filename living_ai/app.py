@@ -22,6 +22,8 @@ from .dataset_lab import dataset_add_example,dataset_list_examples,dataset_revie
 from .task_api import tasks_list,tasks_submit,task_detail,task_events,tasks_run_once,task_retry,task_approve
 from .project_api import list_projects,create_project,update_project,delete_project,list_work_items,create_work_item,update_work_item,delete_work_item,export_projects,import_projects
 from .project_extensions import list_milestones,create_milestone,update_milestone,delete_milestone,project_activity
+from .db import set_settings
+from .logging_store import configure_logging, get_logger, read_logs, clear_logs, log_path
 import hmac
 ROOT=Path(__file__).resolve().parent.parent
 def auth(req):
@@ -37,6 +39,7 @@ class FileIngest(BaseModel): filename:str=Field(min_length=1,max_length=255);con
 class URLIngest(BaseModel): url:str=Field(min_length=8,max_length=2048)
 class Proposal(BaseModel): title:str;changes:dict
 class Train(BaseModel): input_dir:str="data/corpus"
+class RuntimeSettings(BaseModel): temperature:float|None=Field(default=None,ge=0,le=2); max_reply_chars:int|None=Field(default=None,ge=100,le=12000); retrieval_limit:int|None=Field(default=None,ge=0,le=50); log_level:str|None=Field(default=None)
 class DatasetUpload(BaseModel):
     filename:str=Field(min_length=1,max_length=255)
     content:str=Field(min_length=1,max_length=2_000_000)
@@ -207,7 +210,43 @@ async def audit(request: Request, limit:int=50) -> dict[str, Any]:
 @get("/api/settings")
 async def settings(request: Request) -> dict[str, Any]:
     auth(request)
-    return {"settings":get_settings(),"auto_promote":os.getenv("LIVING_AI_AUTO_PROMOTE","false").lower()=="true"}
+    return {"settings":get_settings(),"auto_promote":os.getenv("LIVING_AI_AUTO_PROMOTE","false").lower()=="true","runtime":{"host":os.getenv("LIVING_AI_HOST","127.0.0.1"),"port":int(os.getenv("LIVING_AI_PORT","8000")),"data_dir":str(data_dir()),"model_backend":os.getenv("LIVING_AI_MODEL_BACKEND","char_ngram"),"auto_update":os.getenv("LIVING_AI_AUTO_UPDATE","false").lower()=="true","auto_download_model":os.getenv("LIVING_AI_AUTO_DOWNLOAD_MODEL","false").lower()=="true"},"logging":{"level":os.getenv("LIVING_AI_LOG_LEVEL","INFO").upper(),"path":str(log_path()),"max_file_bytes":2000000,"rotated_files":5}}
+
+@post("/api/settings")
+async def update_settings(data: RuntimeSettings, request: Request) -> dict[str, Any]:
+    auth(request)
+    changes = data.model_dump(exclude_none=True)
+    level = changes.pop("log_level", None)
+    if not changes and level is None:
+        raise HTTPException(status_code=400, detail="Provide at least one setting to update")
+    if changes:
+        set_settings(changes)
+    if level is not None:
+        level = level.upper().strip()
+        if level not in {"DEBUG","INFO","WARNING","ERROR","CRITICAL"}:
+            raise HTTPException(status_code=400, detail="log_level must be DEBUG, INFO, WARNING, ERROR, or CRITICAL")
+        configure_logging(level)
+        get_logger("settings").info("Runtime logging level changed to %s", level)
+    get_logger("settings").info("Runtime settings updated: %s", sorted(changes.keys()))
+    return {"saved":True,"settings":get_settings(),"logging":{"level":level or os.getenv("LIVING_AI_LOG_LEVEL","INFO").upper(),"path":str(log_path())}}
+
+@get("/api/logs")
+async def logs(request: Request, limit:int=300, level:str="") -> dict[str, Any]:
+    auth(request)
+    return {"items":read_logs(limit,level),"path":str(log_path()),"limit":max(1,min(limit,2000))}
+
+@get("/api/logs/export")
+async def export_logs(request: Request) -> Response:
+    auth(request)
+    content="\\n".join(read_logs(2000)) + "\\n"
+    return Response(content=content,media_type="text/plain; charset=utf-8",headers={"Content-Disposition":'attachment; filename="living-ai.log"'})
+
+@post("/api/logs/clear")
+async def clear_logs_route(request: Request) -> dict[str, Any]:
+    auth(request)
+    result=clear_logs()
+    get_logger("settings").warning("Administrator cleared application logs")
+    return result
 
 @post("/api/training/train-from-scratch", sync_to_thread=True)
 def train_scratch(data:TrainScratch,request:Request) -> dict[str, Any]:
@@ -262,4 +301,4 @@ async def model_status(request: Request) -> dict[str, Any]:
     }
 
 init_db()
-app=Litestar(route_handlers=[index,health,status,chat,memories,add,remove,ingest,ingest_file,ingest_url,export_corpus,train,training_datasets,upload_training_dataset,teacher_prepare,teacher_approve,stage_training_item,training_runs,proposals,propose,eval_route,promote_route,rollback_route,audit,settings,train_scratch,model_status,planner_prepare,planner_proposals,planner_submit,planner_record_evaluation,planner_learning_summary,worker_status,worker_resume,worker_pause,worker_enable,worker_disable,worker_configure,worker_tick,worker_approve_goal,worker_recommendations,evaluation_run,evaluation_runs,evaluation_gate_check,evaluation_gate_history,dataset_add_example,dataset_list_examples,dataset_review_example,dataset_export,tasks_list,tasks_submit,task_detail,task_events,tasks_run_once,task_retry,task_approve,export_projects,import_projects,list_projects,create_project,update_project,delete_project,list_work_items,create_work_item,update_work_item,delete_work_item,list_milestones,create_milestone,update_milestone,delete_milestone,project_activity],static_files_config=[StaticFilesConfig(path="/static",directories=[str(ROOT/"static")])],debug=False)
+app=Litestar(route_handlers=[index,health,status,chat,memories,add,remove,ingest,ingest_file,ingest_url,export_corpus,train,training_datasets,upload_training_dataset,teacher_prepare,teacher_approve,stage_training_item,training_runs,proposals,propose,eval_route,promote_route,rollback_route,audit,settings,update_settings,logs,export_logs,clear_logs_route,train_scratch,model_status,planner_prepare,planner_proposals,planner_submit,planner_record_evaluation,planner_learning_summary,worker_status,worker_resume,worker_pause,worker_enable,worker_disable,worker_configure,worker_tick,worker_approve_goal,worker_recommendations,evaluation_run,evaluation_runs,evaluation_gate_check,evaluation_gate_history,dataset_add_example,dataset_list_examples,dataset_review_example,dataset_export,tasks_list,tasks_submit,task_detail,task_events,tasks_run_once,task_retry,task_approve,export_projects,import_projects,list_projects,create_project,update_project,delete_project,list_work_items,create_work_item,update_work_item,delete_work_item,list_milestones,create_milestone,update_milestone,delete_milestone,project_activity],static_files_config=[StaticFilesConfig(path="/static",directories=[str(ROOT/"static")])],debug=False)
