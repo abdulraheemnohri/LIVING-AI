@@ -35,13 +35,13 @@ On Linux environments with a working systemd user manager, this installs a user 
 
 ## Automatic model download and startup
 
-Download the configured LiteRT-LM artifact manually when ready:
+The installer now installs the LiteRT-LM Python API and CLI and, by default, attempts to download the configured LiteRT-LM model during setup:
 
 ```bash
 bash scripts/download_litert_model.sh
 ```
 
-For the first run, the downloader checks free space and will not overwrite an existing model. The default Gemma artifact can be multiple gigabytes; verify model compatibility and available storage before downloading.
+The automatic first-install download is controlled by `LIVING_AI_AUTO_DOWNLOAD_MODEL=true` in `.env.example`. It may use several GB of storage and mobile data and requires approximately 5.5 GB of free disk space. If download fails, installation continues and you can retry the command above. Existing model files are never overwritten. To skip the automatic download, set `LIVING_AI_AUTO_DOWNLOAD_MODEL=false` in `.env` before running the installer.
 
 To enable systemd user-session autostart:
 
@@ -105,7 +105,7 @@ LIVING_AI_LITERTLM_BACKEND=cpu
 LIVING_AI_MODEL_PATH=models/char_ngram.json
 ```
 
-Supported `LIVING_AI_MODEL_BACKEND` values are `hybrid`, `litert_lm`, `char_ngram`, and the existing `tiny_transformer` backend aliases. In strict `litert_lm` mode, a load/generation error is reported. In `hybrid` mode, the app records a fallback response and reason in the chat API result. The app does not download a model automatically; download the Gemma 4 E2B LiteRT-LM file separately as described above.
+Supported `LIVING_AI_MODEL_BACKEND` values are `hybrid`, `litert_lm`, `char_ngram`, and the existing `tiny_transformer` backend aliases. In strict `litert_lm` mode, a load/generation error is reported. In `hybrid` mode, the app records a fallback response and reason in the chat API result. The installer automatically attempts the model download by default; it can be disabled with `LIVING_AI_AUTO_DOWNLOAD_MODEL=false`. If the download cannot complete, use the manual command above.
 
 Official LiteRT-LM docs:
 - Python API: https://developers.google.com/edge/litert-lm/python
