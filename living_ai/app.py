@@ -22,7 +22,7 @@ from .dataset_lab import dataset_add_example,dataset_list_examples,dataset_revie
 from .task_api import tasks_list,tasks_submit,task_detail,task_events,tasks_run_once,task_retry,task_approve
 from .project_api import list_projects,create_project,update_project,delete_project,list_work_items,create_work_item,update_work_item,delete_work_item,export_projects,import_projects
 from .project_extensions import list_milestones,create_milestone,update_milestone,delete_milestone,project_activity
-from .db import set_settings
+from .db import set_settings, init_db
 from .logging_store import configure_logging, get_logger, read_logs, clear_logs, log_path, current_level
 import hmac
 ROOT=Path(__file__).resolve().parent.parent
@@ -227,6 +227,7 @@ async def settings(request: Request) -> dict[str, Any]:
 @post("/api/settings")
 async def update_settings(data: RuntimeSettings, request: Request) -> dict[str, Any]:
     auth(request)
+    init_db()
     changes = data.model_dump(exclude_none=True)
     level = changes.pop("log_level", None)
     if not changes and level is None:
@@ -246,6 +247,7 @@ async def update_settings(data: RuntimeSettings, request: Request) -> dict[str, 
 @get("/api/logs")
 async def logs(request: Request, limit:int=300, level:str="") -> dict[str, Any]:
     auth(request)
+    configure_logging()
     return {"items":read_logs(limit,level),"path":str(log_path()),"limit":max(1,min(limit,2000))}
 
 @get("/api/logs/export")
