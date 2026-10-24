@@ -24,7 +24,7 @@ def test_runtime_settings_update_and_validation(client):
 
 def test_logs_are_persistent_exportable_and_protected(client):
     h={"X-Admin-Password":"runtime-test-password"}
-    assert client.get("/api/logs").status_code==503
+    assert client.get("/api/logs").status_code==401
     response=client.post("/api/settings",headers=h,json={"log_level":"INFO"})
     assert response.status_code==200
     from living_ai.logging_store import get_logger
