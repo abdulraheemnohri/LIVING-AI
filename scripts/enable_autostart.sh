@@ -36,7 +36,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=$ROOT
-ExecStart=/usr/bin/env bash $ROOT/scripts/run.sh
+ExecStart=/usr/bin/env bash $ROOT/scripts/start_managed.sh
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=20
