@@ -56,6 +56,8 @@ jobs:
           bash -n scripts/check_github_updates.sh
           bash -n scripts/enable_autostart.sh
           bash -n scripts/disable_autostart.sh
+          bash -n scripts/download_litert_model.sh
+          bash -n scripts/start_managed.sh
 
       - name: Compile Python modules
         run: python -m compileall -q living_ai
