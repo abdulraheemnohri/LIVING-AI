@@ -23,7 +23,7 @@ from .task_api import tasks_list,tasks_submit,task_detail,task_events,tasks_run_
 from .project_api import list_projects,create_project,update_project,delete_project,list_work_items,create_work_item,update_work_item,delete_work_item,export_projects,import_projects
 from .project_extensions import list_milestones,create_milestone,update_milestone,delete_milestone,project_activity
 from .db import set_settings, init_db
-from .logging_store import configure_logging, get_logger, read_logs, clear_logs, log_path, current_level
+from .logging_store import configure_logging, get_logger, read_logs, read_all_logs, clear_logs, log_path, current_level
 import hmac
 ROOT=Path(__file__).resolve().parent.parent
 def auth(req):
@@ -253,7 +253,7 @@ async def logs(request: Request, limit:int=300, level:str="") -> dict[str, Any]:
 @get("/api/logs/export")
 async def export_logs(request: Request) -> Response:
     auth(request)
-    content="\\n".join(read_logs(2000)) + "\\n"
+    content="\\n".join(read_all_logs()) + "\\n"
     return Response(content=content,media_type="text/plain; charset=utf-8",headers={"Content-Disposition":'attachment; filename="living-ai.log"'})
 
 @post("/api/logs/clear")
