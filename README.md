@@ -246,3 +246,8 @@ A pass means eligible for human review only. It does not promote/deploy code, ch
 ## Curated Learning Dataset Lab (Phase 13)
 
 Use the admin-protected Dataset Lab API to stage examples as **pending**, review them explicitly, and export only approved examples to `data/corpus/curated_training.jsonl`. It deduplicates identical input/output pairs, preserves Urdu/Unicode, bounds payload sizes, and never starts training automatically. See [docs/CURATED_DATASET_LAB.md](docs/CURATED_DATASET_LAB.md). The current from-scratch trainer consumes text files, so the JSONL export must be deliberately converted/adapted before training.
+
+
+## Runtime settings and persistent logs
+
+The Settings page includes SQLite-backed runtime controls (temperature, reply length, memory retrieval limit), model/runtime configuration visibility, and an authenticated persistent log viewer with level filtering, export, and clear controls. Logs rotate locally beneath `LIVING_AI_DATA_DIR/logs/`; chat contents, credentials, API keys, and imported document contents are not written to operational logs. This is an operational log, not an immutable transcript or a compliance archive. See [docs/RUNTIME_SETTINGS_AND_LOGGING.md](docs/RUNTIME_SETTINGS_AND_LOGGING.md).
