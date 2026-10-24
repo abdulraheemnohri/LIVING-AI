@@ -32,6 +32,31 @@ bash scripts/enable_autostart.sh
 
 On Linux environments with a working systemd user manager, this installs a user service. On Android Debian containers without systemd, it creates a helper and explains how to connect it to the terminal app's startup feature. Device-boot startup depends on host-app support and cannot be guaranteed from inside every Android container. See [Automatic startup guide](docs/AUTOSTART.md). Disable with `bash scripts/disable_autostart.sh`.
 
+## Automatic model download and startup
+
+Download the configured LiteRT-LM artifact manually when ready:
+
+```bash
+bash scripts/download_litert_model.sh
+```
+
+For the first run, the downloader checks free space and will not overwrite an existing model. The default Gemma artifact can be multiple gigabytes; verify model compatibility and available storage before downloading.
+
+To enable systemd user-session autostart:
+
+```bash
+bash scripts/enable_autostart.sh
+```
+
+The managed startup service uses `scripts/start_managed.sh`. Automatic GitHub updates and automatic model downloads are **disabled by default**. To opt in, edit your private `.env`:
+
+```dotenv
+LIVING_AI_AUTO_UPDATE=true
+LIVING_AI_AUTO_DOWNLOAD_MODEL=true
+```
+
+Only enable model auto-download if you accept the data/storage cost. Auto-update still requires a clean `main` checkout and passes the project checks. Android Debian containers without a systemd user manager need host-terminal startup support; a Linux helper script alone cannot register an Android boot receiver. See [Autostart guide](docs/AUTOSTART.md).
+
 ## Update an existing installation
 
 From the repository directory, run:
