@@ -30,10 +30,8 @@ def auth(req):
     """Fail closed: state-changing admin routes are unavailable until a token is configured."""
     password=os.getenv("LIVING_AI_ADMIN_PASSWORD","").strip()
     if not password:
-        get_logger("auth").warning("Admin route locked because no password is configured")
         raise HTTPException(status_code=503,detail="Admin routes are locked: configure LIVING_AI_ADMIN_PASSWORD and restart")
     if not hmac.compare_digest(req.headers.get("x-admin-password",""), password):
-        get_logger("auth").warning("Admin authorization rejected")
         raise HTTPException(status_code=401,detail="Valid admin password required")
 class Chat(BaseModel): message:str=Field(min_length=1,max_length=20000)
 class Memory(BaseModel): content:str=Field(min_length=1,max_length=100000);source:str="manual"
