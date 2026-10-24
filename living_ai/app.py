@@ -27,6 +27,18 @@ from .logging_store import configure_logging, get_logger, read_logs, read_all_lo
 import hmac
 ROOT=Path(__file__).resolve().parent.parent
 
+def auth(req: Request) -> None:
+    """Fail closed for all administrative routes."""
+    password = os.getenv("LIVING_AI_ADMIN_PASSWORD", "").strip()
+    if not password:
+        raise HTTPException(
+            status_code=503,
+            detail="Admin routes are locked: configure LIVING_AI_ADMIN_PASSWORD and restart",
+        )
+    supplied = req.headers.get("x-admin-password", "")
+    if not hmac.compare_digest(supplied, password):
+        raise HTTPException(status_code=401, detail="Valid admin password required")
+
 class Chat(BaseModel): message:str=Field(min_length=1,max_length=20000)
 class Memory(BaseModel): content:str=Field(min_length=1,max_length=100000);source:str="manual"
 class FileIngest(BaseModel): filename:str=Field(min_length=1,max_length=255);content:str=Field(min_length=1,max_length=2_500_000)
