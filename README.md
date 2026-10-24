@@ -49,11 +49,11 @@ To enable systemd user-session autostart:
 bash scripts/enable_autostart.sh
 ```
 
-The managed startup service uses `scripts/start_managed.sh`. Automatic GitHub updates and automatic model downloads are **disabled by default**. To opt in, edit your private `.env`:
+The managed startup service uses `scripts/start_managed.sh`. Automatic GitHub updates are **disabled by default**. Automatic model download is enabled for a fresh installation; you can opt out. Edit your private `.env`:
 
 ```dotenv
 LIVING_AI_AUTO_UPDATE=true
-LIVING_AI_AUTO_DOWNLOAD_MODEL=true
+LIVING_AI_AUTO_DOWNLOAD_MODEL=false
 ```
 
 Only enable model auto-download if you accept the data/storage cost. Auto-update still requires a clean `main` checkout and passes the project checks. Android Debian containers without a systemd user manager need host-terminal startup support; a Linux helper script alone cannot register an Android boot receiver. See [Autostart guide](docs/AUTOSTART.md).
