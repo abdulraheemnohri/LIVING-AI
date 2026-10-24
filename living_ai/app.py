@@ -1,4 +1,4 @@
-import os,json,logging
+import os,json
 from pathlib import Path
 from typing import Any
 from litestar import Litestar,get,post,delete,Request
@@ -27,27 +27,6 @@ from .logging_store import configure_logging, get_logger, read_logs, read_all_lo
 import hmac
 ROOT=Path(__file__).resolve().parent.parent
 
-def unhandled_exception_handler(request: Request, exc: Exception) -> Response:
-    """Record unexpected API failures with tracebacks while keeping responses secret-safe."""
-    logger = logging.getLogger("living_ai.unhandled")
-    logger.error(
-        "Unhandled request failure method=%s path=%s",
-        getattr(request, "method", "unknown"),
-        getattr(getattr(request, "url", None), "path", "unknown"),
-        exc_info=(type(exc), exc, exc.__traceback__),
-    )
-    return Response(
-        content=json.dumps({"status_code": 500, "detail": "Internal Server Error"}),
-        status_code=500,
-        media_type="application/json",
-    )
-def auth(req):
-    """Fail closed: state-changing admin routes are unavailable until a token is configured."""
-    password=os.getenv("LIVING_AI_ADMIN_PASSWORD","").strip()
-    if not password:
-        raise HTTPException(status_code=503,detail="Admin routes are locked: configure LIVING_AI_ADMIN_PASSWORD and restart")
-    if not hmac.compare_digest(req.headers.get("x-admin-password",""), password):
-        raise HTTPException(status_code=401,detail="Valid admin password required")
 class Chat(BaseModel): message:str=Field(min_length=1,max_length=20000)
 class Memory(BaseModel): content:str=Field(min_length=1,max_length=100000);source:str="manual"
 class FileIngest(BaseModel): filename:str=Field(min_length=1,max_length=255);content:str=Field(min_length=1,max_length=2_500_000)
@@ -331,4 +310,4 @@ async def model_status(request: Request) -> dict[str, Any]:
 init_db()
 configure_logging()
 get_logger("app").info("LIVING AI application module initialized")
-app=Litestar(route_handlers=[index,health,status,chat,memories,add,remove,ingest,ingest_file,ingest_url,export_corpus,train,training_datasets,upload_training_dataset,teacher_prepare,teacher_approve,stage_training_item,training_runs,proposals,propose,eval_route,promote_route,rollback_route,audit,settings,update_settings,logs,export_logs,clear_logs_route,train_scratch,model_status,planner_prepare,planner_proposals,planner_submit,planner_record_evaluation,planner_learning_summary,worker_status,worker_resume,worker_pause,worker_enable,worker_disable,worker_configure,worker_tick,worker_approve_goal,worker_recommendations,evaluation_run,evaluation_runs,evaluation_gate_check,evaluation_gate_history,dataset_add_example,dataset_list_examples,dataset_review_example,dataset_export,tasks_list,tasks_submit,task_detail,task_events,tasks_run_once,task_retry,task_approve,export_projects,import_projects,list_projects,create_project,update_project,delete_project,list_work_items,create_work_item,update_work_item,delete_work_item,list_milestones,create_milestone,update_milestone,delete_milestone,project_activity],static_files_config=[StaticFilesConfig(path="/static",directories=[str(ROOT/"static")])],exception_handlers={Exception: unhandled_exception_handler},debug=False)
+app=Litestar(route_handlers=[index,health,status,chat,memories,add,remove,ingest,ingest_file,ingest_url,export_corpus,train,training_datasets,upload_training_dataset,teacher_prepare,teacher_approve,stage_training_item,training_runs,proposals,propose,eval_route,promote_route,rollback_route,audit,settings,update_settings,logs,export_logs,clear_logs_route,train_scratch,model_status,planner_prepare,planner_proposals,planner_submit,planner_record_evaluation,planner_learning_summary,worker_status,worker_resume,worker_pause,worker_enable,worker_disable,worker_configure,worker_tick,worker_approve_goal,worker_recommendations,evaluation_run,evaluation_runs,evaluation_gate_check,evaluation_gate_history,dataset_add_example,dataset_list_examples,dataset_review_example,dataset_export,tasks_list,tasks_submit,task_detail,task_events,tasks_run_once,task_retry,task_approve,export_projects,import_projects,list_projects,create_project,update_project,delete_project,list_work_items,create_work_item,update_work_item,delete_work_item,list_milestones,create_milestone,update_milestone,delete_milestone,project_activity],static_files_config=[StaticFilesConfig(path="/static",directories=[str(ROOT/"static")])],debug=False)
