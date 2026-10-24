@@ -252,3 +252,7 @@ Use the admin-protected Dataset Lab API to stage examples as **pending**, review
 ## Runtime settings and persistent logs
 
 The Settings page includes SQLite-backed runtime controls (temperature, reply length, memory retrieval limit), model/runtime configuration visibility, and an authenticated persistent log viewer with level filtering, export, and clear controls. Logs rotate locally beneath `LIVING_AI_DATA_DIR/logs/`; chat contents, credentials, API keys, and imported document contents are not written to operational logs. This is an operational log, not an immutable transcript or a compliance archive. See [docs/RUNTIME_SETTINGS_AND_LOGGING.md](docs/RUNTIME_SETTINGS_AND_LOGGING.md).
+
+## Complete project reference
+
+For the end-to-end architecture, UI inventory, model boundaries, settings, security, logging, backup/update operations, Android Debian setup, and release-readiness checklist, see [docs/COMPLETE_PROJECT_REFERENCE.md](docs/COMPLETE_PROJECT_REFERENCE.md). This guide explicitly distinguishes intended capabilities from features that still need runtime verification.
