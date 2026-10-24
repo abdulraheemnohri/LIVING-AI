@@ -7,6 +7,7 @@ A local-first AI workbench for Android Debian/Linux terminal environments. It co
 ## Project documentation
 
 - [A-to-Z architecture and implementation audit](docs/PROJECT_A_TO_Z.md)
+- [Complete Android Debian installation and LiteRT-LM setup](docs/INSTALLATION_ANDROID_DEBIAN.md)
 - [Project management workspace, API, security and roadmap](docs/PROJECT_MANAGEMENT.md)
 - [GitHub updates, safe updater workflow and troubleshooting](docs/GITHUB_UPDATES_AND_PROJECTS.md)
 - [Runtime settings, persistent logs, export and retention](docs/SETTINGS_AND_LOGGING.md)
