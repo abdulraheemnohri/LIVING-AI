@@ -43,3 +43,25 @@ Host reboot, Android battery restrictions, force-stop, terminal-app limitations,
 - The systemd unit restarts on process failure, not after every configuration change.
 - The setup does not install a scheduled GitHub auto-updater. Check updates with `bash scripts/check_github_updates.sh` and apply them deliberately with `bash scripts/update_android_debian.sh`.
 - Disable service autostart with `bash scripts/disable_autostart.sh`; this does not delete the project, model files or database.
+
+## Managed startup: opt-in automatic update and model download
+
+The systemd user service now starts `scripts/start_managed.sh`. The wrapper starts the app normally by default. Large or code-changing network operations require explicit settings in the private `.env`:
+
+```dotenv
+LIVING_AI_AUTO_UPDATE=false
+LIVING_AI_AUTO_DOWNLOAD_MODEL=false
+```
+
+To opt in, edit `.env` and set the chosen option to `true`. Then restart the service. Do not enable both without understanding the impact: the update step needs a clean `main` checkout, backs up data/config, and runs tests; the model downloader may consume several gigabytes and mobile data. Keep sufficient storage free.
+
+Manual model download:
+
+```bash
+bash scripts/download_litert_model.sh
+```
+
+The downloader refuses to overwrite an existing model, uses a temporary `.part` file, supports resuming, checks free disk space and rejects obvious HTML error pages. It records a SHA-256 hash, but this hash is not publisher authentication by itself; verify against an official publisher checksum/signature when available. Confirm the repository and filename are correct for your target device before enabling automatic download.
+
+The managed startup wrapper does not bypass update safety checks and does not fetch code if auto-update is disabled. If a network/download step fails, the service may exit and retry under systemd's restart policy. For Android containers without a systemd user manager, configure the terminal host's supported startup command to run `bash scripts/start_managed.sh`; the helper alone cannot force Android to start a container at device boot.
+
