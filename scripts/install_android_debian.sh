@@ -45,7 +45,10 @@ fi
 case "${auto_download,,}" in
   true|1|yes|on)
     say "Automatic LiteRT-LM model download is enabled. This may use several GB of storage and mobile data."
-    bash scripts/download_litert_model.sh
+    if ! bash scripts/download_litert_model.sh; then
+      echo "WARNING: LiteRT-LM model download did not complete. The application was installed, but LiteRT-LM inference will remain unavailable until you retry:" >&2
+      echo "  bash scripts/download_litert_model.sh" >&2
+    fi
     ;;
   false|0|no|off)
     say "Skipping model download because LIVING_AI_AUTO_DOWNLOAD_MODEL is disabled."
