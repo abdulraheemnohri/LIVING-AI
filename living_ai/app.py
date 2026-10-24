@@ -23,7 +23,7 @@ from .task_api import tasks_list,tasks_submit,task_detail,task_events,tasks_run_
 from .project_api import list_projects,create_project,update_project,delete_project,list_work_items,create_work_item,update_work_item,delete_work_item,export_projects,import_projects
 from .project_extensions import list_milestones,create_milestone,update_milestone,delete_milestone,project_activity
 from .db import set_settings
-from .logging_store import configure_logging, get_logger, read_logs, clear_logs, log_path
+from .logging_store import configure_logging, get_logger, read_logs, clear_logs, log_path, current_level
 import hmac
 ROOT=Path(__file__).resolve().parent.parent
 def auth(req):
@@ -222,7 +222,7 @@ async def audit(request: Request, limit:int=50) -> dict[str, Any]:
 @get("/api/settings")
 async def settings(request: Request) -> dict[str, Any]:
     auth(request)
-    return {"settings":get_settings(),"auto_promote":os.getenv("LIVING_AI_AUTO_PROMOTE","false").lower()=="true","runtime":{"host":os.getenv("LIVING_AI_HOST","127.0.0.1"),"port":int(os.getenv("LIVING_AI_PORT","8000")),"data_dir":str(data_dir()),"model_backend":os.getenv("LIVING_AI_MODEL_BACKEND","char_ngram"),"auto_update":os.getenv("LIVING_AI_AUTO_UPDATE","false").lower()=="true","auto_download_model":os.getenv("LIVING_AI_AUTO_DOWNLOAD_MODEL","false").lower()=="true"},"logging":{"level":os.getenv("LIVING_AI_LOG_LEVEL","INFO").upper(),"path":str(log_path()),"max_file_bytes":2000000,"rotated_files":5}}
+    return {"settings":get_settings(),"auto_promote":os.getenv("LIVING_AI_AUTO_PROMOTE","false").lower()=="true","runtime":{"host":os.getenv("LIVING_AI_HOST","127.0.0.1"),"port":int(os.getenv("LIVING_AI_PORT","8000")),"data_dir":str(data_dir()),"model_backend":os.getenv("LIVING_AI_MODEL_BACKEND","char_ngram"),"auto_update":os.getenv("LIVING_AI_AUTO_UPDATE","false").lower()=="true","auto_download_model":os.getenv("LIVING_AI_AUTO_DOWNLOAD_MODEL","false").lower()=="true"},"logging":{"level":current_level(),"path":str(log_path()),"max_file_bytes":2000000,"rotated_files":5}}
 
 @post("/api/settings")
 async def update_settings(data: RuntimeSettings, request: Request) -> dict[str, Any]:
@@ -241,7 +241,7 @@ async def update_settings(data: RuntimeSettings, request: Request) -> dict[str, 
         configure_logging(level)
         get_logger("settings").info("Runtime logging level changed to %s", level)
     get_logger("settings").info("Runtime settings updated: %s", sorted(changes.keys()))
-    return {"saved":True,"settings":get_settings(),"logging":{"level":level or os.getenv("LIVING_AI_LOG_LEVEL","INFO").upper(),"path":str(log_path())}}
+    return {"saved":True,"settings":get_settings(),"logging":{"level":current_level(),"path":str(log_path())}}
 
 @get("/api/logs")
 async def logs(request: Request, limit:int=300, level:str="") -> dict[str, Any]:
