@@ -46,3 +46,17 @@ def test_runtime_settings_and_log_routes_fail_closed(client,monkeypatch):
     assert client.get("/api/settings").status_code==503
     assert client.post("/api/settings",json={"temperature":0.5}).status_code==503
     assert client.get("/api/logs").status_code==503
+
+def test_rotated_logs_are_included_in_export(client, monkeypatch):
+    from living_ai.logging_store import log_path, configure_logging
+    configure_logging("INFO")
+    path=log_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.with_name(path.name + ".1").write_text("2026-01-01 00:00:00,000 WARNING living_ai.tests rotated-history-marker\\n", encoding="utf-8")
+    h={"X-Admin-Password":"runtime-test-password"}
+    listing=client.get("/api/logs?limit=200",headers=h)
+    assert listing.status_code==200, listing.text
+    assert any("rotated-history-marker" in line for line in listing.json()["items"])
+    exported=client.get("/api/logs/export",headers=h)
+    assert exported.status_code==200
+    assert "rotated-history-marker" in exported.text
