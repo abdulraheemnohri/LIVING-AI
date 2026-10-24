@@ -82,3 +82,6 @@ $("#clearlogs")?.addEventListener("click",async()=>{
  if(!confirm("Clear current and rotated application logs? This cannot be undone."))return;
  try{await api("/api/logs/clear",{method:"POST",body:"{}"});note("Logs cleared");loadLogs()}catch(e){note("Could not clear logs: "+e.message)}
 });
+
+const previousGoForSettings=go;
+go=function(v){previousGoForSettings(v);if(v==="settings"){loadRuntimeSettings();loadLogs();loadModelStatus()}};
