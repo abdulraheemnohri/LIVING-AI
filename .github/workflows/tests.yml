@@ -45,6 +45,7 @@ jobs:
           node --check static/worker.js
           node --check static/tasks.js
           node --check static/evaluation.js
+          node --check static/projects.js
 
       - name: Syntax-check shell scripts
         run: |
