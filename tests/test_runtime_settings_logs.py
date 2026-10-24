@@ -1,6 +1,7 @@
 import pytest
 from litestar.testing import TestClient
-from living_ai.app import app\nfrom living_ai.db import init_db
+from living_ai.app import app
+from living_ai.db import init_db
 
 @pytest.fixture
 def client(tmp_path, monkeypatch):
