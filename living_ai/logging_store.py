@@ -71,3 +71,6 @@ def clear_logs() -> dict:
                 rotated.unlink()
     get_logger("audit").warning("Log files cleared by administrator")
     return {"cleared": True, "path": str(path)}
+
+def current_level() -> str:
+    return logging.getLevelName(logging.getLogger("living_ai").level)
