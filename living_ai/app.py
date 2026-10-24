@@ -30,8 +30,10 @@ def auth(req):
     """Fail closed: state-changing admin routes are unavailable until a token is configured."""
     password=os.getenv("LIVING_AI_ADMIN_PASSWORD","").strip()
     if not password:
+        get_logger("auth").warning("Admin route locked because no password is configured")
         raise HTTPException(status_code=503,detail="Admin routes are locked: configure LIVING_AI_ADMIN_PASSWORD and restart")
     if not hmac.compare_digest(req.headers.get("x-admin-password",""), password):
+        get_logger("auth").warning("Admin authorization rejected")
         raise HTTPException(status_code=401,detail="Valid admin password required")
 class Chat(BaseModel): message:str=Field(min_length=1,max_length=20000)
 class Memory(BaseModel): content:str=Field(min_length=1,max_length=100000);source:str="manual"
@@ -71,8 +73,18 @@ async def status(request: Request) -> dict[str, Any]:
     return {"status":"running","memories":n,"proposals":p,"original_model_trained":(ROOT/"models"/"char_ngram.json").exists(),"tiny_transformer_trained":(ROOT/"models"/"tiny_transformer"/"weights.pt").exists(),"settings":get_settings(),"data_dir":str(data_dir())}
 @post("/api/chat")
 async def chat(data:Chat) -> dict[str, Any]:
-    try:return respond(data.message)
-    except ValueError as e:raise HTTPException(status_code=400,detail=str(e))
+    logger=get_logger("chat")
+    logger.info("Chat request received (characters=%d)",len(data.message))
+    try:
+        result=respond(data.message)
+        logger.info("Chat response completed (backend=%s)",result.get("backend","unknown"))
+        return result
+    except ValueError as e:
+        logger.warning("Chat request rejected: %s",str(e))
+        raise HTTPException(status_code=400,detail=str(e))
+    except Exception:
+        logger.exception("Chat generation failed")
+        raise
 @get("/api/memories")
 async def memories(request: Request, q:str="",limit:int=20) -> dict[str, Any]:
     auth(request)
@@ -219,12 +231,13 @@ async def update_settings(data: RuntimeSettings, request: Request) -> dict[str, 
     level = changes.pop("log_level", None)
     if not changes and level is None:
         raise HTTPException(status_code=400, detail="Provide at least one setting to update")
-    if changes:
-        set_settings(changes)
     if level is not None:
         level = level.upper().strip()
         if level not in {"DEBUG","INFO","WARNING","ERROR","CRITICAL"}:
             raise HTTPException(status_code=400, detail="log_level must be DEBUG, INFO, WARNING, ERROR, or CRITICAL")
+    if changes:
+        set_settings(changes)
+    if level is not None:
         configure_logging(level)
         get_logger("settings").info("Runtime logging level changed to %s", level)
     get_logger("settings").info("Runtime settings updated: %s", sorted(changes.keys()))
@@ -301,4 +314,6 @@ async def model_status(request: Request) -> dict[str, Any]:
     }
 
 init_db()
+configure_logging()
+get_logger("app").info("LIVING AI application module initialized")
 app=Litestar(route_handlers=[index,health,status,chat,memories,add,remove,ingest,ingest_file,ingest_url,export_corpus,train,training_datasets,upload_training_dataset,teacher_prepare,teacher_approve,stage_training_item,training_runs,proposals,propose,eval_route,promote_route,rollback_route,audit,settings,update_settings,logs,export_logs,clear_logs_route,train_scratch,model_status,planner_prepare,planner_proposals,planner_submit,planner_record_evaluation,planner_learning_summary,worker_status,worker_resume,worker_pause,worker_enable,worker_disable,worker_configure,worker_tick,worker_approve_goal,worker_recommendations,evaluation_run,evaluation_runs,evaluation_gate_check,evaluation_gate_history,dataset_add_example,dataset_list_examples,dataset_review_example,dataset_export,tasks_list,tasks_submit,task_detail,task_events,tasks_run_once,task_retry,task_approve,export_projects,import_projects,list_projects,create_project,update_project,delete_project,list_work_items,create_work_item,update_work_item,delete_work_item,list_milestones,create_milestone,update_milestone,delete_milestone,project_activity],static_files_config=[StaticFilesConfig(path="/static",directories=[str(ROOT/"static")])],debug=False)
