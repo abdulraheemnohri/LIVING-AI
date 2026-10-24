@@ -51,10 +51,19 @@ def read_logs(limit: int = 300, level: str = "") -> list[str]:
     path = configure_logging()
     if not path.exists():
         return []
+    lines = []
+    # Include rotated files from oldest to newest so the tail is chronological.
+    for index in range(5, 0, -1):
+        rotated = path.with_name(path.name + f".{index}")
+        if rotated.exists():
+            try:
+                lines.extend(rotated.read_text(encoding="utf-8", errors="replace").splitlines())
+            except OSError:
+                continue
     try:
-        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        lines.extend(path.read_text(encoding="utf-8", errors="replace").splitlines())
     except OSError:
-        return []
+        pass
     level = level.upper().strip()
     if level in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}:
         lines = [line for line in lines if (" " + level + " ") in line]
@@ -74,3 +83,20 @@ def clear_logs() -> dict:
 
 def current_level() -> str:
     return logging.getLevelName(logging.getLogger("living_ai").level)
+
+def read_all_logs() -> list[str]:
+    """Read all available current and rotated log lines for an explicit export."""
+    path = configure_logging()
+    lines = []
+    for index in range(5, 0, -1):
+        rotated = path.with_name(path.name + f".{index}")
+        if rotated.exists():
+            try:
+                lines.extend(rotated.read_text(encoding="utf-8", errors="replace").splitlines())
+            except OSError:
+                continue
+    try:
+        lines.extend(path.read_text(encoding="utf-8", errors="replace").splitlines())
+    except OSError:
+        pass
+    return lines
