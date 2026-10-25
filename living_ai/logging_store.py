@@ -21,11 +21,18 @@ def configure_logging(level: str | None = None) -> Path:
     global _handler, _configured_path
     path = log_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    chosen = (level or os.getenv("LIVING_AI_LOG_LEVEL", "INFO")).upper()
-    if chosen not in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}:
-        chosen = "INFO"
     with _lock:
         root = logging.getLogger("living_ai")
+        # Helper calls such as get_logger/read_logs must not reset a runtime
+        # level chosen through the authenticated settings API.
+        if level is not None:
+            chosen = level.upper()
+        elif _handler is not None and _configured_path == str(path):
+            chosen = logging.getLevelName(root.level)
+        else:
+            chosen = os.getenv("LIVING_AI_LOG_LEVEL", "INFO").upper()
+        if chosen not in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}:
+            chosen = "INFO"
         root.setLevel(getattr(logging, chosen))
         root.propagate = False
         if _handler is None or _configured_path != str(path):
