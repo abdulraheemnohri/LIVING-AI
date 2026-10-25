@@ -4,6 +4,10 @@ A local-first AI workbench for Android Debian/Linux terminal environments. It co
 
 > This is an evolving engineering project, not a claim of consciousness or frontier-level intelligence. The n-gram model is a lightweight fallback; LiteRT-LM requires a compatible pre-converted `.litertlm` model.
 
+## Complete project blueprint
+
+See [`docs/COMPLETE_PROJECT_BLUEPRINT.md`](docs/COMPLETE_PROJECT_BLUEPRINT.md) for the full architecture, UI pages, functions, settings, security controls, runtime configuration, model strategy, operations, and release checklist.
+
 ## Project documentation
 
 - [A-to-Z architecture and implementation audit](docs/PROJECT_A_TO_Z.md)
