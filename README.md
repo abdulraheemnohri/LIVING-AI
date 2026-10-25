@@ -73,13 +73,13 @@ bash scripts/update_android_debian.sh
 
 The updater requires a clean Git working tree on `main` and a `.venv` created by the installer. It fetches `origin/main`, performs a fast-forward-only update, backs up `.env` and `data/` under a timestamped `backups/update-*` directory, reinstalls development dependencies, compiles Python modules, syntax-checks the dashboard when Node.js is available, and runs the test suite. If an update/check fails, it attempts to reset the code to the previous commit. Dependency changes may remain after rollback; inspect the error before restarting. Keep a separate backup of important data too.
 
-## Hybrid architecture: Model B is the trainable model; Model A is the fallback
+## Hybrid architecture: Model A trains; Model B assists
 
-- **Model A — Character n-gram:** fallback/inference baseline only in the intended two-model workflow. It is not the target of the Model B training pipeline.
-- **Model B — LiteRT-LM-compatible language model:** Model B is the model intended to be trained or fine-tuned. Important: LiteRT-LM is an inference runtime, not a training framework. Train/fine-tune the source model with a compatible external training stack, evaluate it, then convert/export it to a supported `.litertlm` artifact for local inference.
-- **Hybrid mode:** tries the converted Model B through LiteRT-LM first, then falls back to saved local memory or Model A if Model B is unavailable or fails.
+- **Model A — trainable character n-gram:** the project's lightweight local model and the only model trained by the intended training workflow. It learns character-sequence statistics from user-selected, reviewed corpus material; it is resource-efficient but is not a general-purpose reasoning model.
+- **Model B — LiteRT-LM inference/controller:** optional `litert-community/gemma-4-E2B-it-litert-lm`. It can help prepare, label, deduplicate and review candidate training examples for Model A, but **Model B itself is not trained or fine-tuned by LIVING AI**.
+- **Hybrid mode:** tries Model B through LiteRT-LM when available, then uses the configured local fallback path if the optional runtime/model is unavailable or fails, according to the selected backend implementation.
 
-**Implementation status:** the repository has LiteRT-LM inference integration and existing local training code, but does not yet contain a Model B training/fine-tuning-and-conversion pipeline. The end-to-end runtime API, model generation and tests must be validated in the target environment; see [the A-to-Z audit](docs/PROJECT_A_TO_Z.md). The current Training Lab trains the character n-gram baseline, and the optional tiny Transformer trainer is a separate existing feature; these have not yet been replaced with Model B training. Imported SQLite memory is not automatically training data.
+**Implementation status:** the n-gram trainer and LiteRT-LM inference adapter exist. The complete Model B-assisted dataset-to-Model-A training workflow (teacher generation, provenance manifests, versioned candidate checkpoints, evaluation and approval-based promotion) remains a roadmap item and must not be considered implemented end-to-end. The optional tiny Transformer trainer is a separate experimental feature, not Model A's n-gram trainer. Imported memory does not automatically train any model. See [the A-to-Z audit](docs/PROJECT_A_TO_Z.md) and [complete project reference](docs/COMPLETE_PROJECT_REFERENCE.md).
 
 ## Model B: Gemma 4 E2B Instruct (LiteRT-LM)
 
