@@ -228,7 +228,7 @@ async def settings(request: Request) -> dict[str, Any]:
     auth(request)
     return {"settings":get_settings(),"auto_promote":os.getenv("LIVING_AI_AUTO_PROMOTE","false").lower()=="true","runtime":{"host":os.getenv("LIVING_AI_HOST","127.0.0.1"),"port":int(os.getenv("LIVING_AI_PORT","8000")),"data_dir":str(data_dir()),"model_backend":os.getenv("LIVING_AI_MODEL_BACKEND","char_ngram"),"auto_update":os.getenv("LIVING_AI_AUTO_UPDATE","false").lower()=="true","auto_download_model":os.getenv("LIVING_AI_AUTO_DOWNLOAD_MODEL","false").lower()=="true"},"logging":{"level":current_level(),"path":str(log_path()),"max_file_bytes":2000000,"rotated_files":5}}
 
-@post("/api/settings")
+@post("/api/settings", status_code=200)
 async def update_settings(data: RuntimeSettings, request: Request) -> dict[str, Any]:
     auth(request)
     init_db()
@@ -260,7 +260,7 @@ async def export_logs(request: Request) -> Response:
     content="\\n".join(read_all_logs()) + "\\n"
     return Response(content=content,media_type="text/plain; charset=utf-8",headers={"Content-Disposition":'attachment; filename="living-ai.log"'})
 
-@post("/api/logs/clear")
+@post("/api/logs/clear", status_code=200)
 async def clear_logs_route(request: Request) -> dict[str, Any]:
     auth(request)
     result=clear_logs()
